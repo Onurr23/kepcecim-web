@@ -11,8 +11,12 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Kepçecim - High-End Industrial Marketplace",
-  description: "Your premier marketplace for industrial equipment and machinery",
+  title: "Kepçecim - Türkiye'nin İş Makinesi Pazaryeri",
+  description: "Türkiye'nin en büyük iş makinesi pazar yeri. Güvenli, hızlı ve kolay ticaret.",
+  icons: {
+    icon: "/new_logo.png",
+    apple: "/new_logo.png",
+  },
 };
 
 export default function RootLayout({
