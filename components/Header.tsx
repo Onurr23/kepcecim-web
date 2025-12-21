@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -8,10 +9,17 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-dark/80 backdrop-blur supports-[backdrop-filter]:bg-dark/60" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
       <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center space-x-2">
+        <Link href="/" className="flex items-center space-x-3">
+          <Image
+            src="/new_logo.png"
+            alt="Kepçecim Logo"
+            width={200}
+            height={56}
+            className="h-14 w-auto object-contain"
+            priority
+          />
           <span className="text-2xl font-bold">
-            <span className="text-primary">Kep</span>
-            <span className="text-white">çecim</span>
+            <span className="text-primary">KEPÇECİM</span>
           </span>
         </Link>
         
@@ -25,7 +33,7 @@ export default function Header() {
           style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}
         >
           <Download className="h-4 w-4" />
-          Download App
+          Uygulamayı İndir
         </button>
       </div>
     </header>
