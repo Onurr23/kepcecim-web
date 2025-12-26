@@ -1,4 +1,5 @@
-export default function GizlilikPolitikasiPage() {
+
+export default function PrivacyText() {
   return (
     <div className="space-y-8">
       <div>
