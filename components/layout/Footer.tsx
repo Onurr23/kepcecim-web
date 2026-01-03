@@ -11,7 +11,7 @@ export default function Footer() {
       {/* Top Section */}
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
-          
+
           {/* Col 1: Brand */}
           <div className="space-y-6">
             <Link href="/" className="flex items-center space-x-3">
@@ -62,8 +62,10 @@ export default function Footer() {
             <ul className="space-y-4">
               <li><Link href="/kurumsal/hakkimizda" className="text-neutral-400 transition-colors hover:text-primary">Hakkımızda</Link></li>
               <li><Link href="/kurumsal/iletisim" className="text-neutral-400 transition-colors hover:text-primary">İletişim</Link></li>
-              <li><Link href="/kurumsal/kariyer" className="text-neutral-400 transition-colors hover:text-primary">Kariyer</Link></li>
               <li><Link href="/kurumsal/gizlilik-politikasi" className="text-neutral-400 transition-colors hover:text-primary">Gizlilik Politikası</Link></li>
+              <li><Link href="/kurumsal/kullanim-kosullari" className="text-neutral-400 transition-colors hover:text-primary">Kullanıcı Sözleşmesi</Link></li>
+              <li><Link href="/kurumsal/satici-sozlesmesi" className="text-neutral-400 transition-colors hover:text-primary">Satıcı Sözleşmesi</Link></li>
+              <li><Link href="/kurumsal/ilan-kurallari" className="text-neutral-400 transition-colors hover:text-primary">İlan Kuralları</Link></li>
             </ul>
           </div>
 
@@ -97,7 +99,7 @@ export default function Footer() {
             KEPÇECİM
           </h1>
         </div>
-        
+
         <div className="relative z-10 mx-auto flex max-w-7xl flex-col items-center justify-center px-4 text-center sm:px-6 lg:px-8">
           <p className="text-xs text-neutral-600">
             © {currentYear} Kepçecim Teknoloji A.Ş. Tüm hakları saklıdır.

@@ -9,6 +9,8 @@ const sidebarLinks = [
   { href: "/kurumsal/sss", label: "Sıkça Sorulan Sorular" },
   { href: "/kurumsal/gizlilik-politikasi", label: "Gizlilik Politikası" },
   { href: "/kurumsal/kullanim-kosullari", label: "Kullanıcı Sözleşmesi" },
+  { href: "/kurumsal/satici-sozlesmesi", label: "Satıcı Sözleşmesi" },
+  { href: "/kurumsal/ilan-kurallari", label: "İlan Kuralları" },
   { href: "/kurumsal/iletisim", label: "İletişim" },
 ];
 
@@ -23,7 +25,7 @@ export default function KurumsalLayout({
     <div className="min-h-screen bg-black pt-24 pb-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-12 py-20 lg:flex-row">
-          
+
           {/* Sidebar Navigation */}
           <aside className="lg:w-64 lg:shrink-0">
             <nav className="sticky top-32 space-y-1">
