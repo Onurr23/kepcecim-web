@@ -18,6 +18,7 @@ export default function BentoGrid({ machines }: BentoGridProps) {
 
   const featured = machines[0];
   const newArrivals = machines.slice(1, 5);
+  console.log(featured);
 
   const formatPrice = (price: string | number, type: 'sale' | 'rental') => {
     let formatted = "";
@@ -118,9 +119,22 @@ export default function BentoGrid({ machines }: BentoGridProps) {
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
 
               <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-                <h3 className="mb-2 text-3xl font-black uppercase tracking-tight text-white md:text-4xl">
-                  {featured.year} {featured.machine_brands?.name} {featured.title}
-                </h3>
+                {/* Brand & Model Info */}
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-primary font-black tracking-wider uppercase text-sm bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
+                      {featured.brand?.name}
+                    </span>
+                    <span className="text-white/80 font-medium text-xs tracking-wide border border-white/20 px-2 py-0.5 rounded">
+                      {featured.year}
+                    </span>
+                  </div>
+                  <h3 className="text-3xl font-black uppercase tracking-tight text-white md:text-4xl leading-none mb-1">
+                    {featured.model?.name}
+                  </h3>
+                  <p className="text-white/60 text-sm font-medium line-clamp-1">{featured.title}</p>
+                </div>
+
                 <div className="flex items-baseline gap-3">
                   <span className="text-4xl font-black tracking-tighter text-white md:text-5xl">
                     {formatPrice(featured.price, featured.type)}
@@ -171,17 +185,34 @@ export default function BentoGrid({ machines }: BentoGridProps) {
 
                 {/* Content */}
                 <div className="absolute bottom-0 left-0 right-0 p-5">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="rounded bg-black/80 border border-white/10 px-2 py-1 text-[10px] font-bold text-white uppercase tracking-wider backdrop-blur-sm">
-                      {item.year}
-                    </span>
-                    {item.type === 'rental' && (
-                      <span className="rounded bg-primary px-2 py-1 text-[10px] font-bold text-white uppercase tracking-wider">
-                        kiralık
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded bg-black/80 border border-white/10 px-2 py-1 text-[10px] font-bold text-white uppercase tracking-wider backdrop-blur-sm">
+                        {item.year}
                       </span>
-                    )}
+                      {item.type === 'rental' && (
+                        <span className="rounded bg-primary px-2 py-1 text-[10px] font-bold text-white uppercase tracking-wider">
+                          kiralık
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <h4 className="line-clamp-1 text-lg font-black uppercase tracking-tight text-white mb-0.5">{item.title}</h4>
+
+                  {/* Brand & Model Block */}
+                  <div className="mb-2">
+                    <div className="text-primary text-[10px] font-black uppercase tracking-widest mb-0.5">
+                      {item.brand?.name}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="line-clamp-1 text-lg font-black uppercase tracking-tight text-white">
+                        {item.model?.name}
+                      </h4>
+                    </div>
+                    <p className="text-white/50 text-[10px] font-medium line-clamp-1 uppercase tracking-wide">
+                      {item.title}
+                    </p>
+                  </div>
+
                   <p className="text-xl font-black tracking-tight text-primary">{formatPrice(item.price, item.type)}</p>
                 </div>
 
