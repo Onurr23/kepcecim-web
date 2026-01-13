@@ -24,6 +24,7 @@ export default function TermsText() {
                         <li>Kepçecim, satılan makinelerin sahibi veya satıcısı değildir.</li>
                         <li>İlanlardaki bilgilerin doğruluğu, ürünün kalitesi veya yasal durumu tamamen İlan Veren'in sorumluluğundadır.</li>
                         <li>Kepçecim, alıcı ve satıcı arasındaki uyuşmazlıklarda taraf değildir ve sorumlu tutulamaz.</li>
+                        <li>Yedek parça satışlarında kargo, teslimat ve iade süreçleri tamamen Alıcı ve Satıcı arasındadır. Kepçecim, lojistik veya kargo hizmeti sağlamaz.</li>
                     </ul>
                 </section>
 

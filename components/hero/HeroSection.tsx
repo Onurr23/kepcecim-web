@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import GlobalSearchInput from "@/components/ui/GlobalSearchInput";
 
 const HERO_SCENES = [
   {
@@ -15,19 +16,25 @@ const HERO_SCENES = [
   },
   {
     id: 2,
-    videoSrc: "/videos/hero-power.webm", // Video dosyası eklendiğinde path buraya eklenecek
+    videoSrc: "/videos/hero-power.webm",
     headline: "İŞİN GÜCÜ CEBİNDE.",
     subhead: "Al, sat, kirala. Operasyonun hızı artsın.",
   },
   {
     id: 3,
-    videoSrc: "/videos/hero-power.webm", // Video dosyası eklendiğinde path buraya eklenecek
+    videoSrc: "/videos/hero-power.webm",
     headline: "TİCARETİN RENGİ.",
     subhead: "Güvenli, şeffaf ve teknolojik altyapı.",
   },
 ];
 
-const MARQUEE_TEXT = " • KOMİSYONSUZ TİCARET • 81 İLDE GÜVENLİ ALIM SATIM • CEPTEKİ ŞANTİYE • 5000+ İŞ MAKİNESİ ";
+const MARQUEE_ITEMS = [
+  "KOMİSYONSUZ TİCARET",
+  "ONAYLI SATICI SİSTEMİ",
+  "5.000+ GÜNCEL İLAN",
+  "81 İLDE GÜVENLİ ALIM SATIM",
+  "DİREKT SATICIYA ULAŞ",
+];
 
 export default function HeroSection() {
   const [currentScene, setCurrentScene] = useState(0);
@@ -47,16 +54,12 @@ export default function HeroSection() {
   useEffect(() => {
     if (videoRef.current && currentSceneData.videoSrc) {
       const video = videoRef.current;
-      
-      // Reset video to beginning
       video.currentTime = 0;
-      
-      // Only play if video is ready
+
       const handleCanPlay = () => {
         const playPromise = video.play();
         if (playPromise !== undefined) {
           playPromise.catch((error) => {
-            // Ignore interruption errors (power saving, tab switching, etc.)
             if (error.name !== 'AbortError' && error.name !== 'NotAllowedError') {
               console.error("Video play failed:", error);
             }
@@ -65,12 +68,10 @@ export default function HeroSection() {
       };
 
       if (video.readyState >= 3) {
-        // Video is already loaded, play immediately
         handleCanPlay();
       } else {
-        // Wait for video to be ready
         video.addEventListener('canplay', handleCanPlay, { once: true });
-        video.load(); // Force reload
+        video.load();
       }
 
       return () => {
@@ -83,10 +84,8 @@ export default function HeroSection() {
     <section className="relative h-screen w-full overflow-hidden">
       {/* Background Layer (Z-0) */}
       <div className="absolute inset-0 z-0">
-        {/* Fallback background */}
         <div className="absolute inset-0 bg-dark" />
-        
-        {/* Video Container - only render if videoSrc exists */}
+
         {currentSceneData.videoSrc && (
           <video
             ref={videoRef}
@@ -97,36 +96,16 @@ export default function HeroSection() {
             playsInline
             preload="auto"
             aria-label="Background video"
-            onCanPlay={(e) => {
-              const video = e.target as HTMLVideoElement;
-              const playPromise = video.play();
-              if (playPromise !== undefined) {
-                playPromise.catch((error) => {
-                  // Ignore interruption errors (power saving, tab switching, etc.)
-                  if (error.name !== 'AbortError' && error.name !== 'NotAllowedError') {
-                    console.error("Video autoplay failed:", error);
-                  }
-                });
-              }
-            }}
-            onError={(e) => {
-              const target = e.target as HTMLVideoElement;
-              console.error("Video load error for:", currentSceneData.videoSrc);
-              target.style.opacity = "0";
-            }}
           >
-            <source 
-              src={currentSceneData.videoSrc} 
-              type={currentSceneData.videoSrc.endsWith('.webm') ? 'video/webm' : 'video/mp4'} 
+            <source
+              src={currentSceneData.videoSrc}
+              type={currentSceneData.videoSrc.endsWith('.webm') ? 'video/webm' : 'video/mp4'}
             />
           </video>
         )}
 
-        {/* Cinematic Overlay */}
         <div className="absolute inset-0 z-[1] bg-black/60" />
         <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black via-black/50 to-black/30" />
-
-        {/* Radial vignetting */}
         <div className="absolute inset-0 z-[1] bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
       </div>
 
@@ -140,7 +119,6 @@ export default function HeroSection() {
             exit={{ opacity: 0, y: -30 }}
             transition={{ duration: 0.6, ease: "easeInOut" }}
           >
-            {/* Main Headline */}
             <h1 className="font-extrabold tracking-tighter text-white drop-shadow-2xl text-6xl md:text-8xl">
               {currentSceneData.headline}
             </h1>
@@ -160,21 +138,27 @@ export default function HeroSection() {
           </motion.p>
         </AnimatePresence>
 
-        {/* Action Layer (CTAs) */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+          className="mt-8 w-full px-4"
+        >
+          <GlobalSearchInput />
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
+          transition={{ duration: 0.8, delay: 0.5, ease: "easeOut" }}
           className="mt-10 flex flex-row items-center justify-center gap-4"
         >
-          {/* App Store Button */}
           <button
             className={cn(
               "group flex items-center gap-3 rounded-lg border px-6 py-3",
               "bg-white/5 backdrop-blur-sm border-white/10 text-white",
               "transition-all duration-300",
               "hover:border-primary/50 hover:bg-primary/10 hover:scale-105",
-              "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-transparent"
             )}
             aria-label="Download on App Store"
           >
@@ -189,14 +173,12 @@ export default function HeroSection() {
             <span className="font-medium">App Store</span>
           </button>
 
-          {/* Google Play Button */}
           <button
             className={cn(
               "group flex items-center gap-3 rounded-lg border px-6 py-3",
               "bg-white/5 backdrop-blur-sm border-white/10 text-white",
               "transition-all duration-300",
               "hover:border-primary/50 hover:bg-primary/10 hover:scale-105",
-              "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-transparent"
             )}
             aria-label="Get it on Google Play"
           >
@@ -218,7 +200,7 @@ export default function HeroSection() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1, delay: 1 }}
-        className="absolute bottom-32 left-1/2 z-10 -translate-x-1/2 md:bottom-24"
+        className="absolute bottom-32 left-1/2 z-10 -translate-x-1/2 md:bottom-36"
       >
         <motion.div
           animate={{ y: [0, 10, 0] }}
@@ -233,36 +215,32 @@ export default function HeroSection() {
       </motion.div>
 
       {/* Industrial Marquee (Z-20) */}
-      <div className="absolute bottom-0 left-0 right-0 z-20 flex h-16 items-center overflow-hidden border-y border-white/10 bg-black/50 backdrop-blur-md">
+      <div className="absolute bottom-10 left-0 right-0 z-20 flex h-16 items-center overflow-hidden border-y border-white/10 bg-black/50 backdrop-blur-md">
         <div className="flex w-full">
           <motion.div
-            className="flex whitespace-nowrap text-2xl font-bold uppercase tracking-wider md:text-3xl"
-            style={{
-              WebkitTextStroke: "1px white",
-              WebkitTextFillColor: "transparent",
-              textShadow: "none",
-              fontFamily: "monospace, 'Courier New', Courier, monospace",
-            }}
+            className="flex items-center whitespace-nowrap text-xl md:text-2xl font-bold uppercase tracking-wider text-white font-oswald"
             animate={{
-              x: ["0%", "-33.333%"],
+              x: ["0%", "-50%"],
             }}
             transition={{
               x: {
                 repeat: Infinity,
                 repeatType: "loop",
-                duration: 20,
+                duration: 30,
                 ease: "linear",
               },
             }}
           >
-            {/* Duplicate text 3 times for seamless loop */}
-            <span className="inline-block px-8">{MARQUEE_TEXT}</span>
-            <span className="inline-block px-8">{MARQUEE_TEXT}</span>
-            <span className="inline-block px-8">{MARQUEE_TEXT}</span>
+            {/* Duplicate items for seamless loop */}
+            {[...MARQUEE_ITEMS, ...MARQUEE_ITEMS, ...MARQUEE_ITEMS].map((item, idx) => (
+              <div key={idx} className="flex items-center">
+                <span className="px-12 md:px-32">{item}</span>
+                <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_rgba(249,115,22,0.5)]" />
+              </div>
+            ))}
           </motion.div>
         </div>
       </div>
     </section>
   );
 }
-

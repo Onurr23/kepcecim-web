@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
-import { Manrope } from "next/font/google";
+import { Manrope, Oswald } from "next/font/google";
 import "./globals.css";
 
 const manrope = Manrope({
   variable: "--font-manrope",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const oswald = Oswald({
+  variable: "--font-oswald",
   subsets: ["latin"],
   display: "swap",
 });
@@ -24,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr">
-      <body className={`${manrope.variable} font-sans antialiased`}>
+      <body className={`${manrope.variable} ${oswald.variable} font-sans antialiased`} suppressHydrationWarning>
         {children}
       </body>
     </html>

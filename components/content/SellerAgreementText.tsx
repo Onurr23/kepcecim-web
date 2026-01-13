@@ -96,6 +96,12 @@ export default function SellerAgreementText() {
                         Satıcı, mobil uygulama üzerindeki "Satıcı Hesabını Aktifleştir" butonuna tıkladığı, ilgili kutucuğu işaretlediği veya ilan verdiği andan itibaren işbu sözleşmenin tüm maddelerini okumuş, anlamış ve kabul etmiş sayılır.
                     </p>
                 </section>
+                <section>
+                    <h2 className="mt-8 mb-4 text-2xl font-bold text-white">8. Kurumsal Mağaza Kullanım Şartları</h2>
+                    <p className="leading-relaxed">
+                        Platform üzerinde 'Mağaza' açan kullanıcılar, ticari faaliyetlerini kendi markaları altında yürütürler. Mağaza sahibi, yüklediği logo, kapak fotoğrafı ve mağaza adı gibi kurumsal kimlik öğelerinin telif haklarından ve hukuka uygunluğundan bizzat sorumludur. Kepçecim, mağaza sahiplerinin ticari itibarından veya müşterileriyle olan ilişkilerinden sorumlu tutulamaz. Mağaza üyeliği, aksi belirtilmedikçe belirtilen süre (örn: 6 ay) boyunca ücretsizdir, süre sonunda Kepçecim ücretlendirme politikasını değiştirme hakkını saklı tutar.
+                    </p>
+                </section>
             </div>
         </div>
     );

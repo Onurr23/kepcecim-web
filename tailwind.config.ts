@@ -13,6 +13,10 @@ const config: Config = {
         dark: "#050505", // Deep Anthracite/Black
         card: "#0A0A0A", // Slightly lighter than bg
       },
+      fontFamily: {
+        sans: ["var(--font-manrope)", "sans-serif"],
+        oswald: ["var(--font-oswald)", "sans-serif"],
+      },
     },
   },
   plugins: [],
