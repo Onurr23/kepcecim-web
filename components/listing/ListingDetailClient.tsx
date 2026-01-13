@@ -526,7 +526,7 @@ export default function ListingDetailClient({ listing, type }: ListingDetailProp
                                         }
 
                                         // 5. Choose Icon
-                                        let Icon = Construction;
+                                        let Icon: any = Construction;
                                         if (key === 'operating_weight' || key === 'weight' || key.includes('capacity')) Icon = Weight;
                                         if (key.includes('height') || key.includes('depth') || key.includes('reach') || key.includes('width') || key.includes('dimensions')) Icon = Ruler;
                                         if (key.includes('engine') || key.includes('fuel')) Icon = Fuel;
