@@ -17,10 +17,7 @@ const oswald = Oswald({
 export const metadata: Metadata = {
   title: "Kepçecim - Türkiye'nin İş Makinesi Pazaryeri",
   description: "Türkiye'nin en büyük iş makinesi pazar yeri. Güvenli, hızlı ve kolay ticaret.",
-  icons: {
-    icon: "/new_logo.png",
-    apple: "/new_logo.png",
-  },
+
 };
 
 export default function RootLayout({
