@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { slugify } from "@/utils/slugify";
 import Image from "next/image";
 import Link from "next/link";
 import { Search, MapPin, CheckCircle2, Store, ChevronRight, Layers } from "lucide-react";
@@ -145,7 +146,7 @@ export default function DealersPage() {
                         {dealers.map((dealer) => (
                             <Link
                                 key={dealer.id}
-                                href={`/seller/${dealer.id}`}
+                                href={`/galeri/${slugify(dealer.name)}`}
                                 className="group relative bg-[#121212] rounded-xl border border-white/10 overflow-hidden transition-all duration-300 hover:border-orange-500 hover:shadow-2xl hover:shadow-orange-500/10 hover:bg-neutral-800 flex flex-col"
                             >
                                 {/* Header Image */}

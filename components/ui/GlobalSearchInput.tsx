@@ -31,32 +31,49 @@ export default function GlobalSearchInput({
     };
 
     return (
-        <div className={cn("relative group w-full max-w-2xl mx-auto", className)}>
+        <div className={cn("relative group w-full max-w-3xl mx-auto", className)}>
             {/* Glow Effect */}
             <div
-                className="absolute -inset-0.5 bg-gradient-to-r from-primary/50 to-orange-600/50 rounded-2xl blur opacity-30 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"
+                className="absolute -inset-0.5 bg-gradient-to-r from-primary/50 to-orange-600/50 rounded-full blur opacity-30 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"
             />
 
             <div className="relative flex items-center">
                 {/* Glass Container */}
-                <div className="relative w-full overflow-hidden rounded-xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl transition-all duration-300 group-hover:bg-white/15">
-                    <div className="flex items-center px-4 h-14 md:h-16">
-                        <Search className="h-6 w-6 text-white/70 mr-3 shrink-0" />
+                <div className="relative w-full flex items-center bg-neutral-900/60 backdrop-blur-xl border border-white/20 rounded-full shadow-2xl shadow-black/50 transition-all duration-300 group-hover:bg-neutral-900/70 h-16">
+
+                    {/* Category Trigger */}
+                    <button className="hidden sm:flex items-center gap-2 pl-6 pr-2 h-full text-white hover:bg-white/5 transition-colors rounded-l-full">
+                        <div className="grid grid-cols-2 gap-0.5">
+                            <div className="w-1 h-1 bg-white rounded-full"></div>
+                            <div className="w-1 h-1 bg-white rounded-full"></div>
+                            <div className="w-1 h-1 bg-white rounded-full"></div>
+                            <div className="w-1 h-1 bg-white rounded-full"></div>
+                        </div>
+                        <span className="font-semibold whitespace-nowrap">Tüm Kategoriler</span>
+                    </button>
+
+                    {/* Separator */}
+                    <div className="hidden sm:block h-6 w-px bg-white/30 mx-2"></div>
+
+                    <div className="flex-1 flex items-center px-4 h-full">
+                        <Search className="h-5 w-5 text-white/50 mr-3 shrink-0" />
                         <input
                             type="text"
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder={placeholder}
-                            className="w-full h-full bg-transparent text-white placeholder:text-white/50 text-lg outline-none selection:bg-primary/30 min-w-0"
+                            placeholder="Marka, model veya ilan no ara..."
+                            className="w-full h-full bg-transparent text-white placeholder:text-gray-400 text-lg outline-none selection:bg-primary/30 min-w-0"
                         />
+                    </div>
 
-                        {/* Right Side Action (Optional - Search Button) */}
+                    {/* Search Button */}
+                    <div className="p-1.5">
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={handleSearch}
-                            className="ml-2 hidden md:flex items-center justify-center h-10 px-6 rounded-lg bg-primary text-black font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="flex items-center justify-center h-12 px-8 rounded-full bg-orange-600 text-white font-semibold text-base hover:bg-orange-700 transition-colors shadow-lg"
                         >
                             ARA
                         </motion.button>

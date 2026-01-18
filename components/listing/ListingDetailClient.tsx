@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SPEC_LABEL_MAP, PARTS_TERMS, TIRE_CONDITION_OPTIONS, SHIPPING_INFO } from "@/constants/listing-specs";
+import AppGuard from "@/components/ui/AppGuard";
 
 // --- Types ---
 type ListingType = 'sale' | 'rental' | 'part';
@@ -118,7 +119,20 @@ const getConditionPercentage = (condition: string) => {
         default: return 0;
     }
 };
-
+const toSlug = (text: string) => {
+    const trMap: Record<string, string> = {
+        'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
+        'Ç': 'C', 'Ğ': 'G', 'İ': 'I', 'Ö': 'O', 'Ş': 'S', 'Ü': 'U'
+    };
+    return text
+        .split('')
+        .map(c => trMap[c] || c)
+        .join('')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-');
+};
 
 // --- Components ---
 
@@ -608,27 +622,35 @@ export default function ListingDetailClient({ listing, type }: ListingDetailProp
                                                 </span>
                                             )}
 
-                                            {/* View Profile Link */}
-                                            <Link
-                                                href={`/seller/${profile.id}`}
-                                                className="mt-2 inline-flex items-center text-xs font-medium text-orange-500 hover:text-orange-400 transition-colors"
-                                            >
-                                                {isStore ? "Mağazayı Gör" : "Satıcı Profilini Gör"} <ChevronRight className="h-3 w-3 ml-0.5" />
-                                            </Link>
+                                            <div className="mt-3">
+                                                <Link
+                                                    href={`/galeri/${profile.slug || toSlug(isStore ? (profile.store_name || "") : (profile.name || "")) || profile.id}`}
+                                                    className="group/link inline-flex items-center gap-1.5 text-xs font-semibold text-primary/90 hover:text-primary transition-colors"
+                                                >
+                                                    {isStore ? "MAĞAZAYI ZİYARET ET" : "SATICI PROFİLİNİ GÖR"}
+                                                    <span className="flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 group-hover/link:bg-primary group-hover/link:text-black transition-all">
+                                                        <ChevronRight className="h-2.5 w-2.5" />
+                                                    </span>
+                                                </Link>
+                                            </div>
                                         </div>
                                     </div>
 
 
                                     {/* Action Buttons */}
                                     <div className="space-y-3">
-                                        <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-4 text-lg font-black text-white transition-all hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(249,115,22,0.4)] group">
-                                            <Phone className="h-5 w-5 transition-transform group-hover:shake" />
-                                            NUMARAYI GÖSTER
-                                        </button>
-                                        <button className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-transparent py-4 font-bold text-white transition-all hover:bg-white/5">
-                                            <MessageSquare className="h-5 w-5" />
-                                            Mesaj Gönder
-                                        </button>
+                                        <AppGuard trigger="call" productImage={images[0] ? getImageUrl(images[0]) : undefined} className="w-full">
+                                            <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-4 text-lg font-black text-white transition-all hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(249,115,22,0.4)] group">
+                                                <Phone className="h-5 w-5 transition-transform group-hover:shake" />
+                                                NUMARAYI GÖSTER
+                                            </button>
+                                        </AppGuard>
+                                        <AppGuard trigger="message" productImage={images[0] ? getImageUrl(images[0]) : undefined} className="w-full">
+                                            <button className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/20 bg-transparent py-4 font-bold text-white transition-all hover:bg-white/5">
+                                                <MessageSquare className="h-5 w-5" />
+                                                Mesaj Gönder
+                                            </button>
+                                        </AppGuard>
                                     </div>
                                 </div>
 
@@ -661,14 +683,18 @@ export default function ListingDetailClient({ listing, type }: ListingDetailProp
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button className="flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-3 text-white font-bold text-sm shadow-lg active:scale-95 transition-transform">
-                            <Phone className="h-4 w-4" />
-                            ARA
-                        </button>
-                        <button className="flex items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-3 text-neutral-900 font-bold text-sm shadow-sm active:scale-95 transition-transform">
-                            <MessageSquare className="h-4 w-4" />
-                            MESAJ
-                        </button>
+                        <AppGuard trigger="call" productImage={images[0] ? getImageUrl(images[0]) : undefined}>
+                            <button className="flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-3 text-white font-bold text-sm shadow-lg active:scale-95 transition-transform">
+                                <Phone className="h-4 w-4" />
+                                ARA
+                            </button>
+                        </AppGuard>
+                        <AppGuard trigger="message" productImage={images[0] ? getImageUrl(images[0]) : undefined}>
+                            <button className="flex items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-3 text-neutral-900 font-bold text-sm shadow-sm active:scale-95 transition-transform">
+                                <MessageSquare className="h-4 w-4" />
+                                MESAJ
+                            </button>
+                        </AppGuard>
                     </div>
                 </div>
             </div>

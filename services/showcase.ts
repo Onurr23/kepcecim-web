@@ -18,7 +18,7 @@ export interface ShowcaseMachine {
 export async function getLatestShowcaseMachines(): Promise<ShowcaseMachine[]> {
     const supabase = await createClient();
 
-    // 1. Fetch Sales Machines
+    // 1. Fetch Sales Machines (Increased limit to 8)
     const { data: salesData, error: salesError } = await supabase
         .from('sales_machines')
         .select(`
@@ -27,14 +27,14 @@ export async function getLatestShowcaseMachines(): Promise<ShowcaseMachine[]> {
       machine_categories:category (name),
       machine_models:model (name)
     `)
-        .limit(4)
+        .limit(8)
         .order('created_at', { ascending: false });
 
     if (salesError) {
         console.error("Error fetching showcase sales:", salesError);
     }
 
-    // 2. Fetch Rental Machines
+    // 2. Fetch Rental Machines (Increased limit to 8)
     const { data: rentalData, error: rentalError } = await supabase
         .from('rental_machines')
         .select(`
@@ -43,7 +43,7 @@ export async function getLatestShowcaseMachines(): Promise<ShowcaseMachine[]> {
       machine_categories:category (name),
       machine_models:model (name)
     `)
-        .limit(4)
+        .limit(8)
         .order('created_at', { ascending: false });
 
     if (rentalError) {
@@ -85,16 +85,11 @@ export async function getLatestShowcaseMachines(): Promise<ShowcaseMachine[]> {
     const processedSales = processMachines(salesData || [], 'sale');
     const processedRentals = processMachines(rentalData || [], 'rental');
 
-    // Combine and sort by date (though we just fetched top 4 of each, simplistic merge)
-    // Logic: Interleave or just concat. Let's just take top 5 overall if we were sorting perfectly, 
-    // but simpler to just return a mix. User asked for "New Arrivals" so likely mix is fine.
-    // Actually, BentoGrid expects 5 items total usually. One Featured + 4 small. 
-    // Let's return mixed.
-
+    // Combine and sort by date 
     const allMachines = [...processedSales, ...processedRentals].sort((a, b) => {
-        // In a real app we'd sort by created_at here if we preserved it
+        // Simple random shuffle for showcase variety, or could sort by date
         return 0.5 - Math.random();
-    }).slice(0, 5);
+    }).slice(0, 12); // Return up to 12 machines for filtering in component
 
     return allMachines;
 }

@@ -1,3 +1,4 @@
+import { slugify } from "@/utils/slugify";
 import Link from "next/link";
 
 interface Brand {
@@ -17,7 +18,7 @@ export default function BrandStrip({ brands }: BrandStripProps) {
           {brands.map((brand) => (
             <Link
               key={brand.id}
-              href={`/ilanlar?brand=${brand.id}`}
+              href={`/ilanlar/${slugify(brand.name)}`}
               className="text-lg font-bold uppercase tracking-wider text-neutral-600 transition-colors hover:text-neutral-400 select-none cursor-pointer"
             >
               {brand.name}

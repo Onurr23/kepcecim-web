@@ -12,6 +12,7 @@ import SellerHero from "@/components/seller/SellerHero";
 import UpsellCard from "@/components/seller/UpsellCard";
 import SellerProfileSkeleton from "@/components/seller/SellerProfileSkeleton";
 import { createClient } from "@/utils/supabase/client";
+import { slugify } from "@/utils/slugify";
 
 // Types
 type SellerType = "corporate" | "individual";
@@ -38,9 +39,9 @@ const TABS = [
     { id: "SPARE_PART", label: "Yedek Parça", count: 0 },
 ];
 
-export default function SellerProfilePage() {
+export default function StoreProfileClient() {
     const params = useParams();
-    const id = params?.id as string;
+    const slug = params?.slug as string;
     const [loading, setLoading] = useState(true);
     const [seller, setSeller] = useState<SellerProfile | null>(null);
     const [products, setProducts] = useState<any[]>([]);
@@ -48,19 +49,66 @@ export default function SellerProfilePage() {
 
     useEffect(() => {
         async function fetchData() {
-            if (!id) return;
+            if (!slug) return;
             const supabase = createClient();
 
             try {
-                // 1. Fetch Profile
-                const { data: profile, error: profileError } = await supabase
-                    .from("user_profiles")
-                    .select("*")
-                    .eq("id", id)
-                    .single();
+                // 1. Determine Fetch Method (UUID vs Slug)
+                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+                let profile = null;
 
-                if (profileError || !profile) {
-                    console.error("Profile fetch error:", profileError);
+                if (isUuid) {
+                    // Fetch by ID directly
+                    const { data, error } = await supabase
+                        .from("user_profiles")
+                        .select("*")
+                        .eq("id", slug)
+                        .single();
+
+                    if (error && error.code !== 'PGRST116') {
+                        console.error("Profile ID fetch error:", error);
+                        setLoading(false);
+                        return;
+                    }
+                    profile = data;
+                } else {
+                    // Fetch by Slug (Manual Match)
+                    // Note: Since 'slug' column is missing in DB, we fetch all relevant fields and match in memory.
+                    // Ideally, a 'slug' column should be added to user_profiles table.
+                    const { data: profiles, error: listError } = await supabase
+                        .from("user_profiles")
+                        .select("id, name, store_name, is_store");
+
+                    if (listError) {
+                        console.error("Profile list fetch error:", listError);
+                        setLoading(false);
+                        return;
+                    }
+
+                    const matched = profiles?.find(p => {
+                        const nameToSlug = slugify(p.is_store ? (p.store_name || "") : (p.name || ""));
+                        return nameToSlug === slug;
+                    });
+
+                    if (matched) {
+                        const { data, error } = await supabase
+                            .from("user_profiles")
+                            .select("*")
+                            .eq("id", matched.id)
+                            .single();
+
+                        if (error) {
+                            console.error("Profile details fetch error:", error);
+                        } else {
+                            profile = data;
+                        }
+                    } else {
+                        console.warn("No profile found matching slug:", slug);
+                    }
+                }
+
+                if (!profile) {
+                    // Profile not found
                     setLoading(false);
                     return;
                 }
@@ -109,9 +157,9 @@ export default function SellerProfilePage() {
 
                 // 2. Fetch Listings from 3 different tables
                 const [salesRes, rentalRes, partsRes] = await Promise.all([
-                    supabase.from("sales_machines").select("*, machine_brands(name), machine_models(name)").eq("operator_id", id),
-                    supabase.from("rental_machines").select("*, machine_brands(name), machine_models(name)").eq("operator_id", id),
-                    supabase.from("parts").select("*, parts_brands(name), parts_categories(name)").eq("supplier_id", id)
+                    supabase.from("sales_machines").select("*, machine_brands(name), machine_models(name)").eq("operator_id", profile.id),
+                    supabase.from("rental_machines").select("*, machine_brands(name), machine_models(name)").eq("operator_id", profile.id),
+                    supabase.from("parts").select("*, parts_brands(name), parts_categories(name)").eq("supplier_id", profile.id)
                 ]);
 
                 const allProducts: any[] = [];
@@ -143,6 +191,11 @@ export default function SellerProfilePage() {
                             year: Number(item.year || item.production_year) || 0,
                             hours: item.hours_meter ? `${item.hours_meter} Saat` : "-",
                             weight: item.operating_weight || "-"
+                        },
+                        machineInfo: {
+                            category: item.machine_categories?.name || item.parts_categories?.name || "kategori",
+                            brand: brandName,
+                            model: modelName
                         }
                     };
                 };
@@ -161,7 +214,7 @@ export default function SellerProfilePage() {
         }
 
         fetchData();
-    }, [id]);
+    }, [slug]);
 
     if (loading) return <SellerProfileSkeleton />;
     if (!seller) return <div className="flex h-screen items-center justify-center bg-[#050505] text-white">Satıcı bulunamadı.</div>;

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import HeroSection from "@/components/hero/HeroSection";
+import TrustStrip from "@/components/home/TrustStrip";
 import BentoGrid from "@/components/home/BentoGrid";
 import BrandStrip from "@/components/layout/BrandStrip";
 import CategoryStrip from "@/components/home/CategoryStrip";

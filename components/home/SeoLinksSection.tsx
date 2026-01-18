@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { slugify } from "@/utils/slugify";
 
 interface Brand {
     id: string;
@@ -46,9 +48,9 @@ const SEO_LINKS_BASE = [
 export default function SeoLinksSection({ brands }: SeoLinksSectionProps) {
     const brandLinks = {
         title: "Markalar",
-        links: brands.map(brand => ({
+        links: brands.slice(0, 5).map(brand => ({
             label: brand.name,
-            href: `/ilanlar?brand=${brand.id}`
+            href: `/ilanlar/${slugify(brand.name)}`
         }))
     };
 
@@ -75,7 +77,10 @@ export default function SeoLinksSection({ brands }: SeoLinksSectionProps) {
                                             href={link.href}
                                             className="text-xs md:text-sm text-gray-500 hover:text-white transition-colors duration-200 block py-0.5"
                                         >
-                                            {link.label}
+                                            <div className="flex items-center gap-2">
+                                                <ArrowRight className="w-3 h-3 text-white/20" />
+                                                <span>{link.label}</span>
+                                            </div>
                                         </Link>
                                     </li>
                                 ))}
@@ -87,4 +92,3 @@ export default function SeoLinksSection({ brands }: SeoLinksSectionProps) {
         </section>
     );
 }
-

@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Calendar, Hourglass, Weight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { slugify } from "@/utils/slugify";
 
 interface ListingCardProps {
   id: string | number;
@@ -17,11 +18,36 @@ interface ListingCardProps {
     hours: string;
     weight: string;
   };
+  // Optional detailed info for better slugs
+  machineInfo?: {
+    category?: string;
+    brand?: string;
+    model?: string;
+  }
 }
 
-export default function ListingCard({ id, title, price, location, image, type, specs, subtitle, badgeText }: ListingCardProps) {
+export default function ListingCard({ id, title, price, location, image, type, specs, subtitle, badgeText, machineInfo }: ListingCardProps) {
+  // Formula: [category-slug]-[brand-slug]-[model-slug]-[title-slug]-[id]
+  const constructSlug = () => {
+    const parts = [];
+
+    if (machineInfo?.category) parts.push(slugify(machineInfo.category));
+    if (machineInfo?.brand) parts.push(slugify(machineInfo.brand));
+    if (machineInfo?.model) parts.push(slugify(machineInfo.model));
+
+    // Always include title, fall back to "ilan" if empty (rare)
+    parts.push(slugify(title));
+
+    // ID always at the end
+    parts.push(id);
+
+    return parts.join('-');
+  };
+
+  const href = `/ilan/${constructSlug()}${type ? `?type=${type}` : ''}`;
+
   return (
-    <Link href={`/ilan/${id}${type ? `?type=${type}` : ''}`} className="group block h-full">
+    <Link href={href} className="group block h-full">
       <div className="flex h-full flex-col overflow-hidden rounded-xl border border-white/5 bg-[#0A0A0A] transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/50 hover:shadow-[0_0_20px_-10px_rgba(249,115,22,0.3)]">
         {/* Image */}
         <div className="relative aspect-[4/3] w-full overflow-hidden">

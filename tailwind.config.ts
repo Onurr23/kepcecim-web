@@ -16,6 +16,7 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-manrope)", "sans-serif"],
         oswald: ["var(--font-oswald)", "sans-serif"],
+        roboto: ["var(--font-roboto)", "sans-serif"],
       },
     },
   },

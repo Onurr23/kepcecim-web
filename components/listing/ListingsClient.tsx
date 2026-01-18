@@ -12,19 +12,39 @@ import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
 import { useListingFilters } from "@/hooks/useListingFilters";
 
+import { slugify } from "@/utils/slugify";
+
 interface ListingsClientProps {
     initialCategories: any[];
     initialBrands: any[];
+    preselectedCategory?: string | null;
+    preselectedBrand?: string | null;
+    tab?: "sale" | "rent" | "part";
 }
 
-function ListingsContent({ initialCategories, initialBrands }: ListingsClientProps) {
+function ListingsContent({ initialCategories, initialBrands, preselectedCategory, preselectedBrand, tab }: ListingsClientProps) {
     const searchParams = useSearchParams();
-    const categoryParam = searchParams.get("category");
-    const brandParam = searchParams.get("brand");
+    const paramCategorySlug = searchParams.get("category");
+    const paramBrandSlug = searchParams.get("brand");
     const queryParam = searchParams.get("q");
 
-    const [activeTab, setActiveTab] = useState<"sale" | "rent" | "part">("sale");
+    const [activeTab, setActiveTab] = useState<"sale" | "rent" | "part">(tab || "sale");
     const router = useRouter();
+
+    // Helpers for Slug <-> ID Conversion
+    const getSlug = (item: any) => item?.slug || slugify(item?.name || "");
+
+    const getIdFromSlug = (slug: string | null, list: any[]) => {
+        if (!slug) return null;
+        const item = list.find(i => getSlug(i) === slug);
+        return item ? item.id.toString() : null;
+    };
+
+    // Initial Filter Resolution
+    // We prioritize preselected (ID) from props (e.g. /ilanlar/[slug] route)
+    // Then fallback to resolving slug from URL params
+    const resolvedInitialCategoryId = preselectedCategory || getIdFromSlug(paramCategorySlug, initialCategories);
+    const resolvedInitialBrandId = preselectedBrand || getIdFromSlug(paramBrandSlug, initialBrands);
 
     const {
         filters,
@@ -37,8 +57,8 @@ function ListingsContent({ initialCategories, initialBrands }: ListingsClientPro
         isCrane,
         isExcavator
     } = useListingFilters(initialCategories, initialBrands, activeTab, {
-        category: categoryParam || null,
-        brand: brandParam || null
+        category: resolvedInitialCategoryId || null,
+        brand: resolvedInitialBrandId || null
     });
 
     const [loading, setLoading] = useState(true);
@@ -54,22 +74,94 @@ function ListingsContent({ initialCategories, initialBrands }: ListingsClientPro
 
     const [counts, setCounts] = useState({ sale: 0, rent: 0, part: 0 });
 
-    // Sync URL with filter state (Handle Back/Forward navigation)
-    useEffect(() => {
-        if (categoryParam && filters.category !== categoryParam) {
-            updateFilter('category', categoryParam);
-        }
-        if (!categoryParam && filters.category) {
-            updateFilter('category', null);
-        }
+    // Sync URL with filter state (Handle Back/Forward navigation & External Links)
 
-        if (brandParam && filters.brand !== brandParam) {
-            updateFilter('brand', brandParam);
+    // Category Sync
+    useEffect(() => {
+        // Only update state if URL param dictates it.
+        // We rely on the fact that if we click a checkbox, state updates first, then URL updates.
+        // If we navigate back, URL updates, then state should update.
+
+        if (paramCategorySlug) {
+            const id = getIdFromSlug(paramCategorySlug, categories);
+            if (id && filters.category !== id) {
+                updateFilter('category', id);
+            }
+        } else {
+            // If URL has no category, but filter has one, only clear if we are sure it's a navigation event?
+            // To prevent "Cannot Uncheck" race condition where URL lags behind state:
+            // We rely on `paramCategorySlug` dependency. 
+            // If this effect runs, it means `paramCategorySlug` CHANGED.
+            // If it changed to undefined/null, it means we navigated to a page without category.
+            // So we SHOULD clear the filter.
+            if (filters.category) {
+                updateFilter('category', null);
+            }
         }
-        if (!brandParam && filters.brand) {
-            updateFilter('brand', null);
+    }, [paramCategorySlug]); // STRICT Dependency: Only run when URL part changes.
+
+    // Brand Sync
+    useEffect(() => {
+        if (paramBrandSlug) {
+            const id = getIdFromSlug(paramBrandSlug, initialBrands); // Resolve from all initial brands for safety
+            if (id && filters.brand !== id) {
+                updateFilter('brand', id);
+            }
+        } else {
+            if (filters.brand) {
+                updateFilter('brand', null);
+            }
         }
-    }, [categoryParam, brandParam, filters.category, filters.brand, updateFilter]);
+    }, [paramBrandSlug]); // STRICT Dependency
+
+    // Update URL when filters change (Write Slugs)
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+
+        // Helper to update param
+        const updateParam = (key: string, value: string | null) => {
+            if (value) params.set(key, value);
+            else params.delete(key);
+        };
+
+        // Category: ID -> Slug
+        const activeCategory = categories.find(c => c.id.toString() === filters.category);
+        updateParam("category", activeCategory ? getSlug(activeCategory) : null);
+
+        // Brand: ID -> Slug
+        // We search in availableBrands or we might need a broader search if brand not in filtered list?
+        // availableBrands should suffice for valid selections.
+        const activeBrand = availableBrands.find(b => b.id.toString() === filters.brand);
+        updateParam("brand", activeBrand ? getSlug(activeBrand) : null);
+
+        updateParam("city", filters.city);
+
+        if (filters.yearRange[0]) params.set("year_min", filters.yearRange[0].toString());
+        else params.delete("year_min");
+
+        if (filters.yearRange[1]) params.set("year_max", filters.yearRange[1].toString());
+        else params.delete("year_max");
+
+        updateParam("sub_type", filters.sub_type || null);
+        updateParam("mastType", filters.mastType || null);
+        updateParam("craneType", filters.craneType || null);
+
+        // Price (if using custom range logic) - omitting for now as per current state
+
+        const newQuery = params.toString();
+
+        // If query string changed, update URL without full reload
+        if (newQuery !== searchParams.toString()) {
+            router.push(`?${newQuery}`, { scroll: false });
+        }
+    }, [filters, searchParams, router, categories, availableBrands]);
+
+    // Update activeTab when prop changes
+    useEffect(() => {
+        if (tab && tab !== activeTab) {
+            setActiveTab(tab);
+        }
+    }, [tab]);
 
     // Helper to safely get relation name
     const getName = (rel: any) => Array.isArray(rel) ? rel[0]?.name : rel?.name;
@@ -86,11 +178,8 @@ function ListingsContent({ initialCategories, initialBrands }: ListingsClientPro
                 // Helper to apply current filters to a count query
                 const applyFiltersToCount = (query: any, type: 'sale' | 'rent' | 'part') => {
                     if (queryParam) query = query.textSearch('searchable_text', queryParam);
-                    if (filters.category) query = query.eq('category', filters.category);
 
-                    // Brand filter needs care: Parts might assume different brand IDs if tables differ
-                    // But if we are filtering by a Machine Brand ID, applying it to Parts table (which uses parts_brands) 
-                    // will simply result in 0 matches if IDs don't overlap, which is correct behavior (0 results found).
+                    if (filters.category) query = query.eq('category', filters.category);
                     if (filters.brand) query = query.eq('brand', filters.brand);
 
                     if (filters.city) query = query.contains('location', { city: filters.city });
@@ -137,24 +226,27 @@ function ListingsContent({ initialCategories, initialBrands }: ListingsClientPro
         filters.sub_type
     ]);
 
-    // Handle Tab Change with Filter Clearing logic
+    // Handle Tab Change with URL Routing
     const handleTabChange = (newTab: "sale" | "rent" | "part") => {
         if (activeTab === newTab) return;
 
         const isMachineToPart = (activeTab === 'sale' || activeTab === 'rent') && newTab === 'part';
         const isPartToMachine = activeTab === 'part' && (newTab === 'sale' || newTab === 'rent');
 
-        if (isMachineToPart || isPartToMachine) {
-            // Clear Category and Brand filters when switching contexts (Machine <-> Part)
-            // to avoid UUID mismatch/invalid filter state
-            resetFilters();
-            // Also need to clear URL params if they exist, to prevent re-application
-            if (categoryParam || brandParam) {
-                router.push('/ilanlar');
-            }
-        }
+        let targetUrl = '/ilanlar/satilik';
+        if (newTab === 'rent') targetUrl = '/ilanlar/kiralik';
+        else if (newTab === 'part') targetUrl = '/ilanlar/yedek-parca';
 
-        setActiveTab(newTab);
+        const params = new URLSearchParams(searchParams);
+
+        // If switching contexts (Machine <-> Part), clear filters
+        if (isMachineToPart || isPartToMachine) {
+            router.push(targetUrl);
+        } else {
+            // Context compatible (Sale <-> Rent), preserve params
+            const urlWithParams = `${targetUrl}?${params.toString()}`;
+            router.push(urlWithParams);
+        }
     };
 
     const hasMachineFilters = Boolean(filters.category || filters.brand);
@@ -184,6 +276,7 @@ function ListingsContent({ initialCategories, initialBrands }: ListingsClientPro
               images, searchable_text,
               brand:machine_brands(name),
               model:machine_models(name),
+              category:machine_categories(name),
               brand_id:brand, category_id:category
             `, { count: "exact" })
                         .eq("status", "active");
@@ -196,6 +289,7 @@ function ListingsContent({ initialCategories, initialBrands }: ListingsClientPro
               images, searchable_text,
               brand:machine_brands(name),
               model:machine_models(name),
+              category:machine_categories(name),
               brand_id:brand, category_id:category
             `, { count: "exact" })
                         .eq("is_available", true);
@@ -310,6 +404,11 @@ function ListingsContent({ initialCategories, initialBrands }: ListingsClientPro
                             year: item.year,
                             hours: item.hours_meter ? `${item.hours_meter} Saat` : "Belirtilmedi",
                             weight: "N/A"
+                        },
+                        machineInfo: {
+                            category: item.category?.name || "is-makinesi",
+                            brand: brandName,
+                            model: modelName
                         }
                     };
                 });
@@ -351,20 +450,21 @@ function ListingsContent({ initialCategories, initialBrands }: ListingsClientPro
         if (queryParam) {
             return `"${queryParam}" için arama sonuçları`;
         }
-        if (categoryParam) {
+        if (paramCategorySlug) {
             // Try to find name in categories list
             const cat = categories.find(c =>
-                c.id.toString() === categoryParam ||
-                c.slug === categoryParam
+                c.id.toString() === paramCategorySlug ||
+                getSlug(c) === paramCategorySlug
             );
-            return cat ? `Satılık ${cat.name} İlanları` : `Satılık ${categoryParam} İlanları`;
+            return cat ? `Satılık ${cat.name} İlanları` : `Satılık ${paramCategorySlug} İlanları`;
         }
-        if (brandParam) {
+        if (paramBrandSlug) {
             // Try to find name in brands list
             const brand = availableBrands.find(b =>
-                b.id.toString() === brandParam
+                b.id.toString() === paramBrandSlug ||
+                getSlug(b) === paramBrandSlug
             );
-            return brand ? `Satılık ${brand.name}` : `Satılık ${brandParam}`;
+            return brand ? `Satılık ${brand.name}` : `Satılık ${paramBrandSlug}`;
         }
         return "Tüm İş Makineleri";
     };
@@ -382,7 +482,7 @@ function ListingsContent({ initialCategories, initialBrands }: ListingsClientPro
 
     const handleClearAll = () => {
         resetFilters();
-        if (queryParam || categoryParam || brandParam) {
+        if (queryParam || paramCategorySlug || paramBrandSlug) {
             router.push('/ilanlar');
         }
     };
@@ -408,19 +508,19 @@ function ListingsContent({ initialCategories, initialBrands }: ListingsClientPro
                         <li>Anasayfa</li>
                         <li><ChevronDown className="-rotate-90 w-3 h-3 text-neutral-600" /></li>
                         <li>İlanlar</li>
-                        {categoryParam && (
+                        {paramCategorySlug && (
                             <>
                                 <li><ChevronDown className="-rotate-90 w-3 h-3 text-neutral-600" /></li>
                                 <li className="text-white font-medium">
-                                    {categories.find(c => c.id.toString() === categoryParam || c.slug === categoryParam)?.name || categoryParam}
+                                    {categories.find(c => c.id.toString() === paramCategorySlug || getSlug(c) === paramCategorySlug)?.name || paramCategorySlug}
                                 </li>
                             </>
                         )}
-                        {brandParam && (
+                        {paramBrandSlug && (
                             <>
                                 <li><ChevronDown className="-rotate-90 w-3 h-3 text-neutral-600" /></li>
                                 <li className="text-white font-medium">
-                                    {availableBrands.find(b => b.id.toString() === brandParam)?.name || brandParam}
+                                    {availableBrands.find(b => b.id.toString() === paramBrandSlug || getSlug(b) === paramBrandSlug)?.name || paramBrandSlug}
                                 </li>
                             </>
                         )}

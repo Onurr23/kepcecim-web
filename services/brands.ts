@@ -5,7 +5,7 @@ export async function getPopularBrands() {
 
     const { data, error } = await supabase
         .from('machine_brands')
-        .select('*')
+        .select('id, name, logo_url')
         .eq('is_popular', true)
         .order('name', { ascending: true });
 
@@ -15,4 +15,10 @@ export async function getPopularBrands() {
     }
 
     return data;
+}
+
+export async function getAllBrands() {
+    const supabase = await createClient();
+    const { data } = await supabase.from('machine_brands').select('id, name, logo_url').order('name');
+    return data || [];
 }

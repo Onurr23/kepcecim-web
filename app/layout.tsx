@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { Manrope, Oswald } from "next/font/google";
+import { Manrope, Oswald, Roboto } from "next/font/google";
 import "./globals.css";
+import SmartAppBanner from "@/components/layout/SmartAppBanner";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -11,6 +12,13 @@ const manrope = Manrope({
 const oswald = Oswald({
   variable: "--font-oswald",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const roboto = Roboto({
+  variable: "--font-roboto",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
   display: "swap",
 });
 
@@ -27,7 +35,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr">
-      <body className={`${manrope.variable} ${oswald.variable} font-sans antialiased`} suppressHydrationWarning>
+      <body className={`${manrope.variable} ${oswald.variable} ${roboto.variable} font-sans antialiased`} suppressHydrationWarning>
+        <SmartAppBanner />
         {children}
       </body>
     </html>
