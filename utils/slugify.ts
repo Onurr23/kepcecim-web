@@ -5,10 +5,10 @@
  * @param {string} text - The text to slugify
  * @returns {string} The slugified string
  */
-export function slugify(text) {
+export function slugify(text: string | null | undefined): string {
     if (!text) return '';
 
-    const trMap = {
+    const trMap: { [key: string]: string } = {
         'ç': 'c', 'Ç': 'c',
         'ğ': 'g', 'Ğ': 'g',
         'ı': 'i', 'I': 'i', 'İ': 'i',

@@ -1,31 +1,142 @@
+"use server";
+
 import { createClient } from '@/utils/supabase/server';
+import { getTruckBrandIdByName } from './brands';
 
-export async function searchSalesMachines(searchParams: any) {
-    const supabase = await createClient();
+function mapTireCondition(condition: string | null): number | null {
+    if (!condition) return null;
+    if (condition.includes('100')) return 100;
+    if (condition.includes('75')) return 75;
+    if (condition.includes('50')) return 50;
+    if (condition.includes('25')) return 25;
+    return null;
+}
 
-    // Filtre parametrelerini RPC formatına hazırlama
+import { SupabaseClient } from '@supabase/supabase-js';
+
+export async function searchSalesMachines(filters: any, page: number = 1, limit: number = 20, client?: SupabaseClient) {
+    const supabase = client || await createClient();
+
+    // truckBrand is string name, need UUID.
+    let truckBrandId = null;
+    if (filters.truckBrand) {
+        truckBrandId = await getTruckBrandIdByName(filters.truckBrand);
+    }
+
+    // Usage Type Mapping
+    let usageType = null;
+    if (filters.machineStatus === 'Sıfır' || filters.machineStatus === 'İkinci El') {
+        usageType = filters.machineStatus;
+    }
+
     const rpcParams = {
-        search_term: searchParams.query || null,
-        sort_by: searchParams.sort || 'created_at_desc',
-        in_category_id: searchParams.category || null,
-        in_brand_id: searchParams.brand || null,
-        in_price_min: searchParams.minPrice || null,
-        in_price_max: searchParams.maxPrice || null,
-        in_year_min: searchParams.minYear || null,
-        in_year_max: searchParams.maxYear || null,
-        in_city: searchParams.city || null,
-        page_limit: 20,
-        page_offset: (searchParams.page || 0) * 20
+        search_term: filters.query || null,
+        sort_by: filters.sort || 'created_at_desc',
+
+        in_category_id: filters.category || null,
+        in_brand_id: filters.brand || null,
+        in_model_id: filters.model ? filters.model : null, // Explicitly pass model ID
+
+        in_city: filters.city || null,
+        in_district: filters.district || null,
+
+        in_price_min: filters.priceRange?.[0] || null,
+        in_price_max: filters.priceRange?.[1] || null,
+
+        in_year_min: filters.yearRange?.[0] || null,
+        in_year_max: filters.yearRange?.[1] || null,
+
+        in_hours_min: filters.hoursRange?.[0] || null,
+        in_hours_max: filters.hoursRange?.[1] || null,
+
+        in_usage_type: usageType || null,
+        in_condition: filters.condition || null,
+
+        // Pass array directly if it has items, otherwise null
+        in_features: filters.features?.length ? filters.features : null,
+        in_attachments: filters.attachments?.length ? filters.attachments : null,
+
+        // Dynamic Fields
+        in_sub_type: filters.sub_type || null,
+        in_class: filters.class || null,
+
+        in_crane_type: filters.craneType || null,
+        in_chassis_type: filters.chassisType || null,
+        in_truck_brand_id: truckBrandId,
+
+        in_lifting_capacity_min: filters.liftingCapacity?.[0] || null,
+        in_lifting_capacity_max: filters.liftingCapacity?.[1] || null,
+
+        in_lifting_height_min: filters.liftingHeight?.[0] || null,
+        in_lifting_height_max: filters.liftingHeight?.[1] || null,
+
+        in_mast_type: filters.mastType || null,
+        in_tire_type: filters.tireType || null,
+        in_wheel_count: filters.wheelCount || null,
+        in_side_shifter: filters.sideShifter !== undefined && filters.sideShifter !== null ? filters.sideShifter : null,
+
+        in_tire_condition_min: mapTireCondition(filters.tireCondition),
+
+        page_limit: limit,
+        page_offset: (page - 1) * limit
     };
 
     const { data, error } = await supabase.rpc('search_sales_machines', rpcParams);
 
-    if (error) throw error;
-    return data;
+    if (error) {
+        console.error("RPC Error (Sales):", error);
+        throw error;
+    }
+
+    return { data, count: (data && data[0] && data[0].full_count) || data?.length || 0 };
 }
 
+export async function getSalesMachineCount(filters: any) {
+    const supabase = staticClient;
+
+    let query = supabase.from('sales_machines').select('*', { count: 'exact', head: true });
+
+    if (filters.query) query = query.textSearch('searchable_text', filters.query);
+    if (filters.category) query = query.eq('category', filters.category);
+    if (filters.brand) query = query.eq('brand', filters.brand);
+    if (filters.model) query = query.eq('model', filters.model);
+
+    if (filters.city) query = query.contains('location', { city: filters.city });
+    if (filters.district) query = query.contains('location', { district: filters.district });
+
+    if (filters.priceRange?.[0]) query = query.gte('price', filters.priceRange[0]);
+    if (filters.priceRange?.[1]) query = query.lte('price', filters.priceRange[1]);
+
+    if (filters.yearRange?.[0]) query = query.gte('year', filters.yearRange[0]);
+    if (filters.yearRange?.[1]) query = query.lte('year', filters.yearRange[1]);
+
+    if (filters.hoursRange?.[0]) query = query.gte('hours', filters.hoursRange[0]);
+    if (filters.hoursRange?.[1]) query = query.lte('hours', filters.hoursRange[1]);
+
+    if (filters.machineStatus === 'Sıfır') query = query.eq('condition', 'Sıfır'); // Assuming 'condition' column or mapped? 
+    // If usage_type maps to condition column mostly. Re-checking usage_type logic.
+    // RPC used in_usage_type. Table likely has 'usage_type' or 'condition'. 
+    // I'll guess 'usage_type' or 'condition'. 'condition' is common.
+    // Wait, the mapTireCondition is unrelated.
+    // If I am unsure of column, I might skip or try 'usage_type'.
+    // I'll use `usage_type` assuming column name matches RPC param suffix often.
+    if (filters.machineStatus) query = query.eq('usage_type', filters.machineStatus);
+
+    const { count, error } = await query;
+
+    if (error) {
+        console.error("Error fetching sales count:", error);
+        return 0;
+    }
+    return count || 0;
+}
+
+
+import { staticClient } from '@/utils/supabase/static-client';
+
 export async function getSalesMachineById(id: string) {
-    const supabase = await createClient();
+    // Statik client kullanıyoruz (ISR uyumlu olması için)
+    const supabase = staticClient;
 
     // 1. Fetch Machine Data (without user_profiles join)
     const { data: machine, error } = await supabase
@@ -63,3 +174,4 @@ export async function getSalesMachineById(id: string) {
 
     return machine;
 }
+

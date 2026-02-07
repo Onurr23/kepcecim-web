@@ -31,21 +31,25 @@ export async function performGlobalSearch(query: string): Promise<GlobalSearchRe
     };
 
     try {
-        // Run queries in parallel for efficiency
+        // Run queries in parallel for efficiency (each returns { data, count })
         const [salesResults, rentalResults, partsResults] = await Promise.all([
             searchSalesMachines(searchParams),
             searchRentalMachines(searchParams),
             searchParts(searchParams),
         ]);
 
+        const salesData = Array.isArray(salesResults?.data) ? salesResults.data : [];
+        const rentalsData = Array.isArray(rentalResults?.data) ? rentalResults.data : [];
+        const partsData = Array.isArray(partsResults?.data) ? partsResults.data : [];
+
         return {
-            sales: salesResults || [],
-            rentals: rentalResults || [],
-            parts: partsResults || [],
+            sales: salesData,
+            rentals: rentalsData,
+            parts: partsData,
             counts: {
-                sales: salesResults?.length || 0,
-                rentals: rentalResults?.length || 0,
-                parts: partsResults?.length || 0,
+                sales: salesResults?.count ?? salesData.length,
+                rentals: rentalResults?.count ?? rentalsData.length,
+                parts: partsResults?.count ?? partsData.length,
             },
         };
     } catch (error) {

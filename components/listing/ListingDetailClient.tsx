@@ -352,6 +352,11 @@ export default function ListingDetailClient({ listing, type }: ListingDetailProp
 
                                     {/* Overlay Icons */}
                                     <div className="absolute right-4 top-4 flex gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <AppGuard trigger="favorite">
+                                            <button className="bg-black/60 backdrop-blur-md rounded-full p-2 text-white hover:bg-white hover:text-red-500 transition-colors">
+                                                <Heart className="h-5 w-5" />
+                                            </button>
+                                        </AppGuard>
                                         <div className="bg-black/60 backdrop-blur-md rounded-lg px-3 py-1 text-white text-xs font-medium flex items-center gap-2">
                                             <span>Büyütmek için tıkla</span>
                                         </div>

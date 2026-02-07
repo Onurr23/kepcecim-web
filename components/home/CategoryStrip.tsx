@@ -17,6 +17,16 @@ import {
     LayoutGrid,
     CircleDot
 } from "lucide-react";
+import BackhoeLoaderIcon from "@/components/icons/BackhoeLoaderIcon";
+import CraneIcon from "@/components/icons/CraneIcon";
+import ForkliftIcon from "@/components/icons/ForkliftIcon";
+import LoaderIcon from "@/components/icons/LoaderIcon";
+import ExcavatorIcon2 from "@/components/icons/ExcavatorIcon2";
+import TelehandlerIcon from "@/components/icons/TelehandlerIcon";
+import GraderIcon from "@/components/icons/GraderIcon";
+import DozerIcon from "@/components/icons/DozerIcon";
+import RoadRollerIcon from "@/components/icons/RoadRollerIcon";
+import OtherMachinesIcon from "@/components/icons/OtherMachinesIcon";
 import { cn } from "@/lib/utils";
 import { slugify } from "@/utils/slugify";
 
@@ -31,16 +41,16 @@ interface CategoryStripProps {
 }
 
 const iconMap: Record<string, any> = {
-    "Ekskavatör": Construction,
-    "Bekoloder": Tractor,
-    "Loder (Yükleyici)": Truck,
-    "Forklift": Warehouse,
-    "Telehandler (Teleskobik Yükleyici)": ArrowUpRight,
-    "Mobil Vinç": Wind,
-    "Greyder": Zap,
-    "Dozer": CircleDot,
-    "Silindir": Cylinder,
-    "Diğer Makineler": LayoutGrid,
+    "Ekskavatör": ExcavatorIcon2,
+    "Bekoloder": BackhoeLoaderIcon,
+    "Loder (Yükleyici)": LoaderIcon,
+    "Forklift": ForkliftIcon,
+    "Telehandler (Teleskobik Yükleyici)": TelehandlerIcon,
+    "Mobil Vinç": CraneIcon,
+    "Greyder": GraderIcon,
+    "Dozer": DozerIcon,
+    "Silindir": RoadRollerIcon,
+    "Diğer Makineler": OtherMachinesIcon,
 };
 
 export default function CategoryStrip({ categories }: CategoryStripProps) {
@@ -54,15 +64,28 @@ export default function CategoryStrip({ categories }: CategoryStripProps) {
                         // Use explicit slug from category object if available, otherwise slugify name
                         const categorySlug = (category as any).slug || slugify(category.name);
 
+                        // Wide machinery icons need a boost to match visual weight of squares
+                        const isWide = ["Bekoloder", "Loader (Yükleyici)", "Dozer", "Greyder", "Silindir"].some(
+                            name => category.name.includes(name)
+                        );
+
                         return (
                             <Link
                                 key={category.id}
                                 href={`/ilanlar/${categorySlug}`}
-                                className="snap-start shrink-0 group flex flex-col items-center justify-center gap-4 bg-neutral-900/50 border border-white/5 rounded-2xl p-6 min-w-[140px] md:min-w-0 aspect-square transition-all duration-300 cursor-pointer hover:border-orange-500/50 hover:bg-neutral-900"
+                                className="snap-start shrink-0 group flex flex-col items-center justify-center gap-6 bg-neutral-900/40 border border-white/5 rounded-3xl p-8 min-w-[160px] md:min-w-0 aspect-square transition-all duration-400 cursor-pointer hover:border-orange-500/40 hover:bg-neutral-900/80 hover:shadow-2xl hover:shadow-orange-500/10"
                             >
-                                <Icon className="h-8 w-8 text-neutral-600 transition-all duration-300 group-hover:text-orange-500 group-hover:scale-110" />
+                                <div className="relative flex items-center justify-center h-16 w-16 md:h-24 md:w-24">
+                                    <Icon
+                                        size={80}
+                                        className={cn(
+                                            "w-full h-full text-neutral-500 transition-all duration-500 group-hover:text-orange-500 group-hover:scale-110 drop-shadow-sm",
+                                            isWide && "scale-[1.35]"
+                                        )}
+                                    />
+                                </div>
 
-                                <span className="text-xs font-medium text-neutral-400 text-center transition-colors duration-300 group-hover:text-white uppercase tracking-wider">
+                                <span className="text-xs md:text-sm font-bold text-neutral-400 text-center transition-colors duration-300 group-hover:text-white uppercase tracking-widest px-2">
                                     {category.name}
                                 </span>
                             </Link>

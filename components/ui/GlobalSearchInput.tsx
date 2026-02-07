@@ -41,21 +41,7 @@ export default function GlobalSearchInput({
                 {/* Glass Container */}
                 <div className="relative w-full flex items-center bg-neutral-900/60 backdrop-blur-xl border border-white/20 rounded-full shadow-2xl shadow-black/50 transition-all duration-300 group-hover:bg-neutral-900/70 h-16">
 
-                    {/* Category Trigger */}
-                    <button className="hidden sm:flex items-center gap-2 pl-6 pr-2 h-full text-white hover:bg-white/5 transition-colors rounded-l-full">
-                        <div className="grid grid-cols-2 gap-0.5">
-                            <div className="w-1 h-1 bg-white rounded-full"></div>
-                            <div className="w-1 h-1 bg-white rounded-full"></div>
-                            <div className="w-1 h-1 bg-white rounded-full"></div>
-                            <div className="w-1 h-1 bg-white rounded-full"></div>
-                        </div>
-                        <span className="font-semibold whitespace-nowrap">Tüm Kategoriler</span>
-                    </button>
-
-                    {/* Separator */}
-                    <div className="hidden sm:block h-6 w-px bg-white/30 mx-2"></div>
-
-                    <div className="flex-1 flex items-center px-4 h-full">
+                    <div className="flex-1 flex items-center px-4 h-full pl-6">
                         <Search className="h-5 w-5 text-white/50 mr-3 shrink-0" />
                         <input
                             type="text"

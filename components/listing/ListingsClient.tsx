@@ -1,721 +1,716 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useRef, useMemo, useTransition } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ChevronDown, SlidersHorizontal, Loader2, ChevronLeft, ChevronRight, X } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, SlidersHorizontal, ChevronLeft, ChevronRight, X, ArrowUpDown } from "lucide-react";
 import FilterSidebar from "@/components/listing/FilterSidebar";
+import FilterButton from "@/components/listing/FilterButton";
 import ListingCard from "@/components/listing/ListingCard";
 import ListingCardSkeleton from "@/components/listing/ListingCardSkeleton";
 import InFeedCTA from "@/components/listing/InFeedCTA";
 import NoResults from "@/components/listing/NoResults";
-import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
-import { useListingFilters } from "@/hooks/useListingFilters";
+import { useListingFilters, FilterState, initialFilters } from "@/hooks/useListingFilters";
 
+import { getAllCities } from "@/utils/cityDistricts";
 import { slugify } from "@/utils/slugify";
+
+const SORT_OPTIONS = [
+    { value: 'created_at_desc', label: 'En Yeni' },
+    { value: 'created_at_asc', label: 'En Eski' },
+    { value: 'price_asc', label: 'Fiyat (Artan)' },
+    { value: 'price_desc', label: 'Fiyat (Azalan)' },
+    { value: 'year_desc', label: 'Yıl (Yeni-Eski)' },
+    { value: 'year_asc', label: 'Yıl (Eski-Yeni)' },
+];
 
 interface ListingsClientProps {
     initialCategories: any[];
     initialBrands: any[];
-    preselectedCategory?: string | null;
-    preselectedBrand?: string | null;
+    initialFilterState?: Partial<FilterState>; // Changed from discrete props
     tab?: "sale" | "rent" | "part";
+    initialListings?: any[];
+    initialTotalCount?: number;
+    initialCounts?: { sale: number; rent: number; part: number };
+    initialModels?: any[];
+    initialFeatures?: any[];
+    initialAttachments?: any[];
 }
 
-function ListingsContent({ initialCategories, initialBrands, preselectedCategory, preselectedBrand, tab }: ListingsClientProps) {
+function ListingsContent({
+    initialCategories,
+    initialBrands,
+    initialFilterState,
+    tab = "sale",
+    initialListings = [],
+    initialTotalCount = 0,
+    initialCounts = { sale: 0, rent: 0, part: 0 },
+    initialModels = [],
+    initialFeatures = [],
+    initialAttachments = []
+}: ListingsClientProps) {
     const searchParams = useSearchParams();
-    const paramCategorySlug = searchParams.get("category");
-    const paramBrandSlug = searchParams.get("brand");
-    const queryParam = searchParams.get("q");
-
-    const [activeTab, setActiveTab] = useState<"sale" | "rent" | "part">(tab || "sale");
     const router = useRouter();
+    const [isPending, startTransition] = useTransition();
 
-    // Helpers for Slug <-> ID Conversion
+    // 1. URL Params Extraction (Still needed for diffing/updates, but State is seeded)
+    // Removed old param extraction for seed, relying on initialFilterState
+
+    // We rely on 'tab' prop for active status, but we can track strictly if needed.
+    const activeTab = tab;
+
+    // 2. Helpers
     const getSlug = (item: any) => item?.slug || slugify(item?.name || "");
 
-    const getIdFromSlug = (slug: string | null, list: any[]) => {
-        if (!slug) return null;
-        const item = list.find(i => getSlug(i) === slug);
-        return item ? item.id.toString() : null;
-    };
-
-    // Initial Filter Resolution
-    // We prioritize preselected (ID) from props (e.g. /ilanlar/[slug] route)
-    // Then fallback to resolving slug from URL params
-    const resolvedInitialCategoryId = preselectedCategory || getIdFromSlug(paramCategorySlug, initialCategories);
-    const resolvedInitialBrandId = preselectedBrand || getIdFromSlug(paramBrandSlug, initialBrands);
-
+    // 4. Hook (Manages "Draft" / Interactive State)
     const {
         filters,
         updateFilter,
         resetFilters,
+        setFilters,
         categories,
-        availableBrands,
-        subCategories,
+        brands: availableBrands,
+        models: availableModels,
+        districts,
+        categoryFeatures,
+        categoryAttachments,
         isForklift,
         isCrane,
-        isExcavator
-    } = useListingFilters(initialCategories, initialBrands, activeTab, {
-        category: resolvedInitialCategoryId || null,
-        brand: resolvedInitialBrandId || null
-    });
+        isExcavator,
+        isLoader,
+        isTireConditionGroup
+    } = useListingFilters(
+        initialCategories,
+        initialBrands,
+        activeTab,
+        initialFilterState, // Pass full state
+        initialModels,
+        initialFeatures,
+        initialAttachments
+    );
 
-    const [loading, setLoading] = useState(true);
-    const [listings, setListings] = useState<any[]>([]);
-    const [sortBy, setSortBy] = useState("newest");
+    const [allCities] = useState(getAllCities());
+    const [isSortOpen, setIsSortOpen] = useState(false);
 
-    // Pagination State
-    const [page, setPage] = useState(1);
-    const ITEMS_PER_PAGE = 50;
-    const [totalCount, setTotalCount] = useState(0);
+    // Pagination
+    const page = Number(searchParams.get("page")) || 1;
+    const ITEMS_PER_PAGE = 20;
+    const totalPages = Math.ceil(initialTotalCount / ITEMS_PER_PAGE);
 
-    const supabase = createClient();
+    // --- URL SYNC LOGIC ---
 
-    const [counts, setCounts] = useState({ sale: 0, rent: 0, part: 0 });
+    // --- URL SYNC LOGIC ---
 
-    // Sync URL with filter state (Handle Back/Forward navigation & External Links)
-
-    // Category Sync
-    useEffect(() => {
-        // Only update state if URL param dictates it.
-        // We rely on the fact that if we click a checkbox, state updates first, then URL updates.
-        // If we navigate back, URL updates, then state should update.
-
-        if (paramCategorySlug) {
-            const id = getIdFromSlug(paramCategorySlug, categories);
-            if (id && filters.category !== id) {
-                updateFilter('category', id);
-            }
-        } else {
-            // If URL has no category, but filter has one, only clear if we are sure it's a navigation event?
-            // To prevent "Cannot Uncheck" race condition where URL lags behind state:
-            // We rely on `paramCategorySlug` dependency. 
-            // If this effect runs, it means `paramCategorySlug` CHANGED.
-            // If it changed to undefined/null, it means we navigated to a page without category.
-            // So we SHOULD clear the filter.
-            if (filters.category) {
-                updateFilter('category', null);
-            }
-        }
-    }, [paramCategorySlug]); // STRICT Dependency: Only run when URL part changes.
-
-    // Brand Sync
-    useEffect(() => {
-        if (paramBrandSlug) {
-            const id = getIdFromSlug(paramBrandSlug, initialBrands); // Resolve from all initial brands for safety
-            if (id && filters.brand !== id) {
-                updateFilter('brand', id);
-            }
-        } else {
-            if (filters.brand) {
-                updateFilter('brand', null);
-            }
-        }
-    }, [paramBrandSlug]); // STRICT Dependency
-
-    // Update URL when filters change (Write Slugs)
-    useEffect(() => {
+    const serializeFiltersToParams = (filtersToApply: FilterState) => {
         const params = new URLSearchParams(searchParams.toString());
 
-        // Helper to update param
-        const updateParam = (key: string, value: string | null) => {
+        // Helper to set/delete
+        const setOrDelete = (key: string, value: string | null) => {
             if (value) params.set(key, value);
             else params.delete(key);
         };
 
-        // Category: ID -> Slug
-        const activeCategory = categories.find(c => c.id.toString() === filters.category);
-        updateParam("category", activeCategory ? getSlug(activeCategory) : null);
+        const activeCategory = categories.find(c => c.id.toString() === filtersToApply.category);
+        setOrDelete("kategori", activeCategory ? getSlug(activeCategory) : null);
+        // Clean up old
+        params.delete("category");
 
-        // Brand: ID -> Slug
-        // We search in availableBrands or we might need a broader search if brand not in filtered list?
-        // availableBrands should suffice for valid selections.
-        const activeBrand = availableBrands.find(b => b.id.toString() === filters.brand);
-        updateParam("brand", activeBrand ? getSlug(activeBrand) : null);
+        const activeBrand = availableBrands.find(b => b.id.toString() === filtersToApply.brand);
+        setOrDelete("marka", activeBrand ? getSlug(activeBrand) : null);
+        params.delete("brand");
 
-        updateParam("city", filters.city);
+        setOrDelete("model", filtersToApply.model); // Model usually ID, but maybe we want name? Prompt says "brand, category" specifically. Model ID is fine usually, but prompt asked for "Structure in "İlanlar" page...". If we can mapped model name, better. But Model Names can be duplicates across brands. ID is safer. Staying with ID for Model unless requested. Prompt: "Standart Kazı Kovası -> ...".
 
-        if (filters.yearRange[0]) params.set("year_min", filters.yearRange[0].toString());
-        else params.delete("year_min");
+        setOrDelete("sehir", filtersToApply.city);
+        params.delete("city");
 
-        if (filters.yearRange[1]) params.set("year_max", filters.yearRange[1].toString());
-        else params.delete("year_max");
+        setOrDelete("ilce", filtersToApply.district);
+        params.delete("district");
 
-        updateParam("sub_type", filters.sub_type || null);
-        updateParam("mastType", filters.mastType || null);
-        updateParam("craneType", filters.craneType || null);
+        if (filtersToApply.yearRange[0]) params.set("yil_min", filtersToApply.yearRange[0].toString());
+        else params.delete("yil_min");
+        params.delete("year_min");
 
-        // Price (if using custom range logic) - omitting for now as per current state
+        if (filtersToApply.yearRange[1]) params.set("yil_max", filtersToApply.yearRange[1].toString());
+        else params.delete("yil_max");
+        params.delete("year_max");
+
+        if (filtersToApply.hoursRange[0]) params.set("saat_min", filtersToApply.hoursRange[0].toString());
+        else params.delete("saat_min");
+        params.delete("hours_min");
+
+        if (filtersToApply.hoursRange[1]) params.set("saat_max", filtersToApply.hoursRange[1].toString());
+        else params.delete("saat_max");
+        params.delete("hours_max");
+
+        // Status & Condition
+        setOrDelete("durum", filtersToApply.machineStatus ?? null);
+        params.delete("status"); // cleanup
+
+        setOrDelete("kondisyon", filtersToApply.condition ?? null);
+        params.delete("condition"); // cleanup
+
+        // Features (Comma Separated Slugs)
+        // Map IDs to Names -> Slugs
+        params.delete("features");
+        params.delete("ozellikler");
+        if (filtersToApply.features && filtersToApply.features.length > 0) {
+            const slugList = filtersToApply.features.map(id => {
+                const feat = categoryFeatures.find((f: any) => f.id.toString() === id);
+                return feat ? slugify(feat.name) : null;
+            }).filter(Boolean);
+            if (slugList.length > 0) params.set("ozellikler", slugList.join(","));
+        }
+
+        // Attachments (Comma Separated Slugs)
+        params.delete("attachments");
+        params.delete("atasman");
+        if (filtersToApply.attachments && filtersToApply.attachments.length > 0) {
+            const slugList = filtersToApply.attachments.map(id => {
+                const att = categoryAttachments.find((a: any) => a.id.toString() === id);
+                return att ? slugify(att.name) : null;
+            }).filter(Boolean);
+            if (slugList.length > 0) params.set("atasman", slugList.join(","));
+        }
+
+        // Dynamic
+        setOrDelete("alt_tip", filtersToApply.sub_type || null);
+        params.delete("sub_type");
+
+        setOrDelete("sinif", filtersToApply.class || null);
+        params.delete("class");
+
+        setOrDelete("lastik_durumu", filtersToApply.tireCondition || null);
+        params.delete("tireCondition");
+
+        setOrDelete("mast_tipi", filtersToApply.mastType || null);
+        params.delete("mastType");
+
+        setOrDelete("vinc_tipi", filtersToApply.craneType || null);
+        params.delete("craneType");
+
+        setOrDelete("sasi_tipi", filtersToApply.chassisType || null);
+        params.delete("chassisType");
+
+        setOrDelete("kamyon_markasi", filtersToApply.truckBrand || null);
+        params.delete("truckBrand");
+
+        setOrDelete("lastik_tipi", filtersToApply.tireType || null);
+        params.delete("tireType");
+
+        setOrDelete("tekerlek_sayisi", filtersToApply.wheelCount || null);
+        params.delete("wheelCount");
+
+        setOrDelete("yana_kaydirma", filtersToApply.sideShifter !== null && filtersToApply.sideShifter !== undefined ? String(filtersToApply.sideShifter) : null);
+        params.delete("sideShifter");
+
+        // Price
+        setOrDelete("fiyat_min", filtersToApply.priceRange[0]?.toString() || null);
+        params.delete("price_min");
+
+        setOrDelete("fiyat_max", filtersToApply.priceRange[1]?.toString() || null);
+        params.delete("price_max");
+
+        // Capacity
+        setOrDelete("kapasite_min", filtersToApply.liftingCapacity?.[0]?.toString() || null);
+        params.delete("lifting_capacity_min");
+
+        setOrDelete("kapasite_max", filtersToApply.liftingCapacity?.[1]?.toString() || null);
+        params.delete("lifting_capacity_max");
+
+        if (filtersToApply.sort && filtersToApply.sort !== 'created_at_desc') params.set("sirala", filtersToApply.sort);
+        else params.delete("sirala");
+        params.delete("sort"); // cleanup old
+
+        return params;
+    };
+
+    const applyFiltersToUrl = (filtersToApply: FilterState) => {
+        const params = serializeFiltersToParams(filtersToApply);
+        params.delete("page"); // Reset page
 
         const newQuery = params.toString();
-
-        // If query string changed, update URL without full reload
+        // Only push if changed
         if (newQuery !== searchParams.toString()) {
-            router.push(`?${newQuery}`, { scroll: false });
-        }
-    }, [filters, searchParams, router, categories, availableBrands]);
-
-    // Update activeTab when prop changes
-    useEffect(() => {
-        if (tab && tab !== activeTab) {
-            setActiveTab(tab);
-        }
-    }, [tab]);
-
-    // Helper to safely get relation name
-    const getName = (rel: any) => Array.isArray(rel) ? rel[0]?.name : rel?.name;
-
-    // Reset page when tab or filters change
-    useEffect(() => {
-        setPage(1);
-    }, [activeTab, filters, queryParam]);
-
-    // Fetch counts for tabs with ALL active filters applied
-    useEffect(() => {
-        async function fetchCounts() {
-            try {
-                // Helper to apply current filters to a count query
-                const applyFiltersToCount = (query: any, type: 'sale' | 'rent' | 'part') => {
-                    if (queryParam) query = query.textSearch('searchable_text', queryParam);
-
-                    if (filters.category) query = query.eq('category', filters.category);
-                    if (filters.brand) query = query.eq('brand', filters.brand);
-
-                    if (filters.city) query = query.contains('location', { city: filters.city });
-
-                    if (filters.yearRange[0]) query = query.gte('year', filters.yearRange[0]);
-                    if (filters.yearRange[1]) query = query.lte('year', filters.yearRange[1]);
-
-                    return query;
-                };
-
-                const saleQuery = applyFiltersToCount(
-                    supabase.from("sales_machines").select("id", { count: "exact", head: true }).eq("status", "active"),
-                    'sale'
-                );
-
-                const rentQuery = applyFiltersToCount(
-                    supabase.from("rental_machines").select("id", { count: "exact", head: true }).eq("is_available", true),
-                    'rent'
-                );
-
-                const partQuery = applyFiltersToCount(
-                    supabase.from("parts").select("id", { count: "exact", head: true }),
-                    'part'
-                );
-
-                const results = await Promise.all([saleQuery, rentQuery, partQuery]);
-
-                setCounts({
-                    sale: results[0].count || 0,
-                    rent: results[1].count || 0,
-                    part: results[2].count || 0
-                });
-            } catch (err) {
-                console.error("Error fetching counts:", err);
-            }
-        }
-        fetchCounts();
-    }, [
-        queryParam,
-        filters.category,
-        filters.brand,
-        filters.city,
-        filters.yearRange,
-        filters.sub_type
-    ]);
-
-    // Handle Tab Change with URL Routing
-    const handleTabChange = (newTab: "sale" | "rent" | "part") => {
-        if (activeTab === newTab) return;
-
-        const isMachineToPart = (activeTab === 'sale' || activeTab === 'rent') && newTab === 'part';
-        const isPartToMachine = activeTab === 'part' && (newTab === 'sale' || newTab === 'rent');
-
-        let targetUrl = '/ilanlar/satilik';
-        if (newTab === 'rent') targetUrl = '/ilanlar/kiralik';
-        else if (newTab === 'part') targetUrl = '/ilanlar/yedek-parca';
-
-        const params = new URLSearchParams(searchParams);
-
-        // If switching contexts (Machine <-> Part), clear filters
-        if (isMachineToPart || isPartToMachine) {
-            router.push(targetUrl);
-        } else {
-            // Context compatible (Sale <-> Rent), preserve params
-            const urlWithParams = `${targetUrl}?${params.toString()}`;
-            router.push(urlWithParams);
+            startTransition(() => {
+                router.push(`?${newQuery}`);
+            });
         }
     };
 
-    const hasMachineFilters = Boolean(filters.category || filters.brand);
+    const handleApply = () => {
+        applyFiltersToUrl(filters);
+    };
 
-    // Fetch listings based on active tab and page
+    // Auto-apply logic for Category, Brand, and Model
+    const prevFiltersRef = React.useRef(filters);
+
     useEffect(() => {
-        async function fetchListings() {
-            setLoading(true);
-            try {
-                let data: any[] = [];
-                let count: number | null = 0;
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                let error = null;
+        const prev = prevFiltersRef.current;
+        const current = filters;
 
-                const from = (page - 1) * ITEMS_PER_PAGE;
-                const to = from + ITEMS_PER_PAGE - 1;
+        const isCategoryChanged = prev.category !== current.category;
+        const isSortChanged = prev.sort !== current.sort;
 
-                // Base Query Builder
-                let query: any;
-
-                if (activeTab === "sale") {
-                    query = supabase
-                        .from("sales_machines")
-                        .select(`
-              id, title, year, hours_meter,
-              pricing, location, status,
-              images, searchable_text,
-              brand:machine_brands(name),
-              model:machine_models(name),
-              category:machine_categories(name),
-              brand_id:brand, category_id:category
-            `, { count: "exact" })
-                        .eq("status", "active");
-                } else if (activeTab === "rent") {
-                    query = supabase
-                        .from("rental_machines")
-                        .select(`
-              id, title, year, hours_meter,
-              pricing, location, is_available,
-              images, searchable_text,
-              brand:machine_brands(name),
-              model:machine_models(name),
-              category:machine_categories(name),
-              brand_id:brand, category_id:category
-            `, { count: "exact" })
-                        .eq("is_available", true);
-                } else if (activeTab === "part") {
-                    query = supabase
-                        .from("parts")
-                        .select(`
-              id, title, images, searchable_text,
-              pricing, location, year:production_year,
-              brand:parts_brands(name),
-              category:parts_categories(name),
-              sub_category:parts_sub_categories(name)
-            `, { count: "exact" });
-                }
-
-                // Apply Search Query
-                if (queryParam) {
-                    query = query.textSearch('searchable_text', queryParam);
-                }
-
-                // Apply Common Filters
-                if (filters.category) {
-                    // Ensure column name is 'category' for all tables
-                    query = query.eq('category', filters.category);
-                }
-
-                if (filters.brand) {
-                    query = query.eq('brand', filters.brand);
-                }
-
-                // Parts specific sub-category filter (reusing sub_type filter state)
-                if (activeTab === 'part' && filters.sub_type) {
-                    query = query.eq('sub_category', filters.sub_type);
-                }
-
-                if (filters.city) {
-                    query = query.contains('location', { city: filters.city });
-                }
-
-                // Machine specific sub_type (Forklift type etc) - Only if NOT part
-                if (activeTab !== 'part' && filters.sub_type) {
-                    query = query.eq('sub_type', filters.sub_type);
-                }
-
-                const specsFilters: any = {};
-                if (filters.mastType) specsFilters.mastType = filters.mastType;
-                if (filters.craneType) specsFilters.craneType = filters.craneType;
-
-                if (Object.keys(specsFilters).length > 0) {
-                    query = query.contains('specifications', specsFilters);
-                }
-
-                // Price Range Filter 
-                // Note: Pricing is JSONB, so difficult to range filter efficiently without generated columns or specific RPCs.
-                // Skipping price range filter implementation for now as it requires complex JSONB query or RPC.
-                // Assuming basic implementation provided elsewhere or Todo.
-
-                if (filters.yearRange[0]) query = query.gte('year', filters.yearRange[0]);
-                if (filters.yearRange[1]) query = query.lte('year', filters.yearRange[1]);
-
-                if (sortBy === "newest") query = query.order("created_at", { ascending: false });
-                else if (sortBy === "price_asc") {
-                    query = query.order("created_at", { ascending: false });
-                } else if (sortBy === "price_desc") {
-                    query = query.order("created_at", { ascending: false });
-                }
-
-                const { data: resultData, count: resultCount, error: resultError } = await query.range(from, to);
-
-                if (resultError) throw resultError;
-                count = resultCount;
-                data = resultData || [];
-
-                // Mapping Logic
-                const mappedData = data.map(item => {
-                    if (activeTab === "part") {
-                        const brandName = getName(item.brand);
-                        const subCatName = getName(item.sub_category);
-                        const priceVal = item.pricing?.price;
-                        const currency = item.pricing?.currency || "TL";
-
-                        return {
-                            id: item.id,
-                            title: item.title,
-                            subtitle: `${brandName || ''} • ${subCatName || 'Parça'}`,
-                            price: priceVal ? `${Number(priceVal).toLocaleString("tr-TR")} ${currency}` : "Fiyat Sorunuz",
-                            location: item.location ? `${item.location.city || ''}` : "Konum Belirtilmedi",
-                            image: Array.isArray(item.images) ? item.images[0] : (typeof item.images === 'string' ? JSON.parse(item.images)[0] : "https://images.unsplash.com/photo-1581094794329-cd1361ddee2d?q=80&w=800"),
-                            type: "part",
-                            badgeText: "PARÇA",
-                            specs: { year: item.year || "-", hours: "-", weight: "-" }
-                        };
-                    }
-
-                    const brandName = getName(item.brand);
-                    const modelName = getName(item.model);
-                    const isSale = activeTab === "sale";
-                    const priceVal = isSale ? (item.pricing?.price || item.pricing?.salePrice) : item.pricing?.dailyRate;
-                    const currency = item.pricing?.currency || "₺";
-                    const suffix = isSale ? "" : " ₺/gün";
-
-                    return {
-                        id: item.id,
-                        title: item.title || `${brandName || ''} ${modelName || ''}`,
-                        subtitle: `${brandName || ""} • ${modelName || ""}`,
-                        price: priceVal ? `${Number(priceVal).toLocaleString("tr-TR")} ${isSale ? currency : suffix}` : "Fiyat Sorunuz",
-                        location: item.location ? `${item.location.district}, ${item.location.city}` : "Konum Belirtilmedi",
-                        image: item.images?.[0] || "https://images.unsplash.com/photo-1581094794329-cd1361ddee2d?q=80&w=800",
-                        type: activeTab,
-                        badgeText: item.year?.toString(),
-                        specs: {
-                            year: item.year,
-                            hours: item.hours_meter ? `${item.hours_meter} Saat` : "Belirtilmedi",
-                            weight: "N/A"
-                        },
-                        machineInfo: {
-                            category: item.category?.name || "is-makinesi",
-                            brand: brandName,
-                            model: modelName
-                        }
-                    };
-                });
-
-                setListings(mappedData);
-                setTotalCount(count || 0);
-            } catch (err) {
-                console.error("Error fetching listings:", err);
-            } finally {
-                setLoading(false);
-            }
+        // Only Category and Sort trigger immediate apply
+        // Brand, Model, and all others wait for "Filtrele" button
+        if (isCategoryChanged || isSortChanged) {
+            applyFiltersToUrl(current);
         }
 
-        fetchListings();
-    }, [activeTab, page, filters, sortBy]);
+        prevFiltersRef.current = current;
+    }, [filters]);
 
-    // Helper: Remove specific filter and sync URL
+    // Sync Draft State FROM URL
+    useEffect(() => {
+        const q = searchParams.get("arama") || searchParams.get("q");
+        if (q !== (filters.query || null)) updateFilter("query", q || null);
+
+        // Dynamic Params
+        const sub_type = searchParams.get("alt_tip") || searchParams.get("sub_type");
+        if (sub_type && sub_type !== filters.sub_type) updateFilter("sub_type", sub_type);
+
+        const cls = searchParams.get("sinif") || searchParams.get("class");
+        if (cls && cls !== filters.class) updateFilter("class", cls);
+
+        const city = searchParams.get("sehir") || searchParams.get("city");
+        if (city && city !== filters.city) updateFilter("city", city);
+        else if (!city && filters.city) updateFilter("city", null);
+
+        const district = searchParams.get("ilce") || searchParams.get("district");
+        if (district && district !== filters.district) updateFilter("district", district);
+
+        const pMin = searchParams.get("fiyat_min") || searchParams.get("price_min");
+        const pMax = searchParams.get("fiyat_max") || searchParams.get("price_max");
+        if (pMin !== (filters.priceRange[0]?.toString() || null) || pMax !== (filters.priceRange[1]?.toString() || null)) {
+            updateFilter("priceRange", [pMin ? Number(pMin) : null, pMax ? Number(pMax) : null]);
+        }
+
+        const pModel = searchParams.get("model");
+        if (pModel && pModel !== filters.model) updateFilter("model", pModel);
+
+        const hMin = searchParams.get("saat_min") || searchParams.get("hours_min");
+        const hMax = searchParams.get("saat_max") || searchParams.get("hours_max");
+        if (hMin !== (filters.hoursRange[0]?.toString() || null) || hMax !== (filters.hoursRange[1]?.toString() || null)) {
+            updateFilter("hoursRange", [hMin ? Number(hMin) : null, hMax ? Number(hMax) : null]);
+        }
+
+        const status = searchParams.get("durum") || searchParams.get("status");
+        if (status && status !== filters.machineStatus) updateFilter("machineStatus", status);
+
+        const cond = searchParams.get("kondisyon") || searchParams.get("condition");
+        if (cond && cond !== filters.condition) updateFilter("condition", cond);
+
+        // Features (Comma separated slugs -> IDs)
+        // We need 'categoryFeatures' which is in state/hook.
+        // Wait, 'categoryFeatures' is from hook return. Accessing it here:
+        const featsParam = searchParams.get("ozellikler") || searchParams.get("features"); // String
+        let featIds: string[] = [];
+        if (featsParam) {
+            const slugs = featsParam.split(","); // Legacy might be multiple params but now comma
+            // If legacy multiple params (searchParams.getAll), we handle that?
+            // Prompt says "Stop repeating... use comma". URL will be comma.
+
+            featIds = slugs.map(slug => {
+                const found = categoryFeatures.find((f: any) => slugify(f.name) === slug || f.slug === slug);
+                return found ? found.id.toString() : null;
+            }).filter((id): id is string => id !== null);
+        } else {
+            // Fallback for legacy array param if mixed
+            const legacy = searchParams.getAll("features");
+            if (legacy.length > 0) featIds = legacy;
+        }
+
+        if (JSON.stringify(featIds) !== JSON.stringify(filters.features)) {
+            updateFilter("features", featIds);
+        }
+
+        // Attachments
+        const attsParam = searchParams.get("atasman") || searchParams.get("attachments");
+        let attIds: string[] = [];
+        if (attsParam) {
+            const slugs = attsParam.split(",");
+            attIds = slugs.map(slug => {
+                const found = categoryAttachments.find((a: any) => slugify(a.name) === slug || a.slug === slug);
+                return found ? found.id.toString() : null;
+            }).filter((id): id is string => id !== null);
+        } else {
+            const legacy = searchParams.getAll("attachments");
+            if (legacy.length > 0) attIds = legacy;
+        }
+
+        if (JSON.stringify(attIds) !== JSON.stringify(filters.attachments)) {
+            updateFilter("attachments", attIds);
+        }
+
+        const sortParam = searchParams.get("sirala") || searchParams.get("sort");
+        if (sortParam && sortParam !== filters.sort) {
+            updateFilter("sort", sortParam);
+        } else if (!sortParam && filters.sort !== 'created_at_desc') {
+            updateFilter("sort", 'created_at_desc');
+        }
+
+        // Other new params
+        const truck = searchParams.get("kamyon_markasi") || searchParams.get("truckBrand");
+        if (truck !== filters.truckBrand) updateFilter("truckBrand", truck);
+
+        const tireType = searchParams.get("lastik_tipi") || searchParams.get("tireType");
+        if (tireType !== filters.tireType) updateFilter("tireType", tireType);
+
+        // ... Check other dynamic fields if critical
+
+    }, [searchParams, categoryFeatures, categoryAttachments]); // Added dependencies for lookups
+
+    // Link Builder for Tabs (preserves other params)
+    // Link Builder for Tabs (preserves other params)
+    const getTabHref = (targetTab: "sale" | "rent" | "part") => {
+        let path = "/ilanlar/satilik";
+        if (targetTab === "rent") path = "/ilanlar/kiralik";
+        else if (targetTab === "part") path = "/ilanlar/yedek-parca";
+
+        // Logic: 
+        // User requested independent tabs. Switching tabs clears ALL filters.
+        return path;
+    };
+
     const removeActiveFilter = (key: string) => {
-        // 1. Update Layout/State
+        // Update Draft
+        // Map key to filter key
+        // Update URL directly?
+        // We update Draft, and let 'useEffect' trigger apply?
+        // No, 'useEffect' only triggers on Cat/Brand/Model change.
+        // For others, we must trigger Apply.
+
+        // Better: Manipulate URL directly for removal.
+        const params = new URLSearchParams(searchParams);
+
         if (key === 'category') {
-            updateFilter('category', null);
-        } else if (key === 'brand') {
+            params.delete("category");
+            updateFilter('category', null); // Sync draft
+        }
+        else if (key === 'brand') {
+            params.delete("brand");
             updateFilter('brand', null);
-        } else if (key === 'city') {
-            updateFilter('city', null);
-        } else if (key === 'yearRange') {
+        }
+        else if (key === 'model') {
+            params.delete("model");
+            updateFilter('model', null);
+        }
+        else if (key === 'yearRange') {
+            params.delete("year_min");
+            params.delete("year_max");
             updateFilter('yearRange', [null, null]);
         }
-
-        // 2. Sync URL
-        const params = new URLSearchParams(searchParams);
-        if (params.has(key)) {
+        else if (key === 'priceRange') {
+            params.delete("price_min");
+            params.delete("price_max");
+            updateFilter('priceRange', [null, null]);
+        }
+        else {
             params.delete(key);
-            router.push(`/ilanlar?${params.toString()}`);
+            // Try to sync draft
+            if (filters[key as keyof FilterState] !== undefined) {
+                updateFilter(key as keyof FilterState, null);
+            }
         }
+
+        params.delete("page");
+        startTransition(() => {
+            router.push(`?${params.toString()}`);
+        });
     };
-
-    const getPageTitle = () => {
-        if (queryParam) {
-            return `"${queryParam}" için arama sonuçları`;
-        }
-        if (paramCategorySlug) {
-            // Try to find name in categories list
-            const cat = categories.find(c =>
-                c.id.toString() === paramCategorySlug ||
-                getSlug(c) === paramCategorySlug
-            );
-            return cat ? `Satılık ${cat.name} İlanları` : `Satılık ${paramCategorySlug} İlanları`;
-        }
-        if (paramBrandSlug) {
-            // Try to find name in brands list
-            const brand = availableBrands.find(b =>
-                b.id.toString() === paramBrandSlug ||
-                getSlug(b) === paramBrandSlug
-            );
-            return brand ? `Satılık ${brand.name}` : `Satılık ${paramBrandSlug}`;
-        }
-        return "Tüm İş Makineleri";
-    };
-
-    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
-
-    const hasActiveFilters = Boolean(
-        queryParam ||
-        filters.category ||
-        filters.brand ||
-        filters.city ||
-        filters.yearRange[0] ||
-        filters.sub_type
-    );
 
     const handleClearAll = () => {
         resetFilters();
-        if (queryParam || paramCategorySlug || paramBrandSlug) {
-            router.push('/ilanlar');
-        }
+        prevFiltersRef.current = initialFilters; // Sync ref
+
+        // Clear params
+        const params = new URLSearchParams();
+        if (searchParams.get("tab")) params.set("tab", searchParams.get("tab")!); // Keep tab
+        // Keep sort if desired, or reset? Usually reset clears sort too or keeps default. Default is fine.
+
+        startTransition(() => {
+            router.push(`?${params.toString()}`);
+        });
     };
 
     const removeQueryParam = () => {
         const params = new URLSearchParams(searchParams);
         params.delete("q");
-        router.push(`/ilanlar?${params.toString()}`);
+        startTransition(() => {
+            router.push(`?${params.toString()}`);
+        });
     };
 
+    const handlePageChange = (newPage: number) => {
+        const params = new URLSearchParams(searchParams);
+        params.set("page", newPage.toString());
+        startTransition(() => {
+            router.push(`?${params.toString()}`);
+        });
+    };
+
+    const getPageTitle = () => {
+        if (filters.query) return `"${filters.query}" için arama sonuçları`;
+        if (filters.category) {
+            const cat = categories.find(c => c.id.toString() === filters.category);
+            return cat ? `Satılık ${cat.name} İlanları` : `Satılık İş Makineleri`;
+        }
+        if (filters.brand) {
+            const brand = availableBrands.find(b => b.id.toString() === filters.brand);
+            return brand ? `Satılık ${brand.name}` : `Satılık İş Makineleri`;
+        }
+        return "Tüm İş Makineleri";
+    };
+
+    const appliedParams = useMemo(() => {
+        const p = searchParams;
+        return {
+            q: p.get("q") || p.get("arama"),
+            categorySlug: p.get("kategori") || p.get("category"),
+            brandSlug: p.get("marka") || p.get("brand"),
+            city: p.get("sehir") || p.get("city"),
+            district: p.get("ilce") || p.get("district"),
+            modelId: p.get("model"),
+            sub_type: p.get("alt_tip") || p.get("sub_type"),
+            class: p.get("class") || p.get("sinif"),
+            tireCondition: p.get("lastik_durumu") || p.get("tireCondition"),
+            priceMin: p.get("fiyat_min") || p.get("price_min"),
+            priceMax: p.get("fiyat_max") || p.get("price_max"),
+            yearMin: p.get("yil_min") || p.get("year_min"),
+            yearMax: p.get("yil_max") || p.get("year_max"),
+            hoursMin: p.get("saat_min") || p.get("hours_min"),
+            hoursMax: p.get("saat_max") || p.get("hours_max"),
+            status: p.get("durum") || p.get("status"),
+            condition: p.get("kondisyon") || p.get("condition"),
+            features: p.get("ozellikler") || p.getAll("features"), // String or Array
+            attachments: p.get("atasman") || p.getAll("attachments"),
+        };
+    }, [searchParams]);
+
+    const hasActiveFilters = Boolean(
+        appliedParams.q || appliedParams.categorySlug || appliedParams.brandSlug ||
+        appliedParams.city || appliedParams.district || appliedParams.modelId ||
+        appliedParams.sub_type || appliedParams.class || appliedParams.tireCondition ||
+        appliedParams.priceMin || appliedParams.priceMax ||
+        appliedParams.yearMin || appliedParams.yearMax ||
+        appliedParams.hoursMin || appliedParams.hoursMax ||
+        appliedParams.status || appliedParams.condition ||
+        (appliedParams.features && appliedParams.features.length > 0) ||
+        (appliedParams.attachments && appliedParams.attachments.length > 0)
+    );
+
+    const getCategoryNameFromSlug = (slug: string | null) => {
+        if (!slug) return null;
+        const c = categories.find((cat: any) => getSlug(cat) === slug);
+        return c?.name || slug;
+    };
+    const getBrandNameFromSlug = (slug: string | null) => {
+        if (!slug) return null;
+        const b = availableBrands.find((br: any) => getSlug(br) === slug);
+        return b?.name || slug;
+    };
+    const getModelNameFromId = (id: string | null) => {
+        // Try available models first
+        const m = availableModels.find((mod: any) => mod.id.toString() === id);
+        if (m) return m.name;
+        // Return ID if name not found (since we removed extra fetch) or "Model"
+        return "Model: " + id;
+    };
+
+    const formatPriceChip = (val: number | null) => {
+        if (val === null) return "";
+        return new Intl.NumberFormat("tr-TR").format(val);
+    };
+
+    // Pending UI
+    const currentParamsNoPage = new URLSearchParams(searchParams);
+    currentParamsNoPage.delete("page");
+    const pendingParams = serializeFiltersToParams(filters);
+    pendingParams.delete("page");
+    const hasPendingChanges = currentParamsNoPage.toString() !== pendingParams.toString();
+
+    // Note: We use existing 'counts' logic, but using props `initialCounts`
+    const counts = initialCounts;
+
     return (
-        <div className="min-h-screen bg-neutral-950 pt-24 pb-20 relative overflow-hidden">
-            <div className="absolute inset-0 z-0 opacity-[0.05]"
-                style={{
-                    backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)',
-                    backgroundSize: '32px 32px'
-                }}
-            />
+        <div className="min-h-screen bg-neutral-950 pt-24 pb-20 relative overflow-x-hidden">
+            <div className="absolute inset-0 z-0 opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
 
             <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <nav className="mb-4 flex text-xs text-neutral-400">
-                    <ol className="flex items-center space-x-2">
-                        <li>Anasayfa</li>
-                        <li><ChevronDown className="-rotate-90 w-3 h-3 text-neutral-600" /></li>
-                        <li>İlanlar</li>
-                        {paramCategorySlug && (
-                            <>
-                                <li><ChevronDown className="-rotate-90 w-3 h-3 text-neutral-600" /></li>
-                                <li className="text-white font-medium">
-                                    {categories.find(c => c.id.toString() === paramCategorySlug || getSlug(c) === paramCategorySlug)?.name || paramCategorySlug}
-                                </li>
-                            </>
-                        )}
-                        {paramBrandSlug && (
-                            <>
-                                <li><ChevronDown className="-rotate-90 w-3 h-3 text-neutral-600" /></li>
-                                <li className="text-white font-medium">
-                                    {availableBrands.find(b => b.id.toString() === paramBrandSlug || getSlug(b) === paramBrandSlug)?.name || paramBrandSlug}
-                                </li>
-                            </>
-                        )}
-                    </ol>
-                </nav>
-
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold font-oswald text-white mb-6">{getPageTitle()}</h1>
-                    <div className="flex flex-col gap-4">
-                        <div className="flex items-center gap-2 border-b border-white/10 pb-1">
-                            {/* Tabs */}
-                            <button
-                                onClick={() => handleTabChange("sale")}
-                                className={`px-4 sm:px-6 py-2 rounded-t-lg text-xs sm:text-sm font-bold transition-all border flex items-center gap-2 ${activeTab === "sale"
-                                    ? "bg-orange-600 text-black border-orange-600"
-                                    : "bg-transparent text-neutral-400 border-white/10 hover:text-white hover:border-white/30"
-                                    }`}
-                            >
-                                <span>SATILIK</span>
-                                <span className={cn(
-                                    "rounded-full px-1.5 py-0.5 text-[10px] sm:text-xs",
-                                    activeTab === "sale" ? "bg-black/20 text-black" : "bg-white/5 text-neutral-500"
-                                )}>
-                                    {counts.sale}
-                                </span>
-                            </button>
-                            <button
-                                onClick={() => handleTabChange("rent")}
-                                className={`px-4 sm:px-6 py-2 rounded-t-lg text-xs sm:text-sm font-bold transition-all border flex items-center gap-2 ${activeTab === "rent"
-                                    ? "bg-orange-600 text-black border-orange-600"
-                                    : "bg-transparent text-neutral-400 border-white/10 hover:text-white hover:border-white/30"
-                                    }`}
-                            >
-                                <span>KİRALIK</span>
-                                <span className={cn(
-                                    "rounded-full px-1.5 py-0.5 text-[10px] sm:text-xs",
-                                    activeTab === "rent" ? "bg-black/20 text-black" : "bg-white/5 text-neutral-500"
-                                )}>
-                                    {counts.rent}
-                                </span>
-                            </button>
-                            {!hasMachineFilters && (
-                                <button
-                                    onClick={() => handleTabChange("part")}
-                                    className={`px-4 sm:px-6 py-2 rounded-t-lg text-xs sm:text-sm font-bold transition-all border flex items-center gap-2 ${activeTab === "part"
-                                        ? "bg-orange-600 text-black border-orange-600"
-                                        : "bg-transparent text-neutral-400 border-white/10 hover:text-white hover:border-white/30"
-                                        }`}
-                                >
-                                    <span>YEDEK PARÇA</span>
-                                    <span className={cn(
-                                        "rounded-full px-1.5 py-0.5 text-[10px] sm:text-xs",
-                                        activeTab === "part" ? "bg-black/20 text-black" : "bg-white/5 text-neutral-500"
-                                    )}>
-                                        {counts.part}
-                                    </span>
-                                </button>
-                            )}
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-4 lg:items-start">
+                    <aside className="hidden lg:col-span-1 lg:flex lg:flex-col lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-6rem)]">
+                        <div className="flex-1 overflow-y-auto min-h-0 pr-1">
+                            <FilterSidebar
+                                filters={filters}
+                                onFilterChange={updateFilter}
+                                onApply={handleApply}
+                                categories={categories}
+                                brands={availableBrands}
+                                models={availableModels}
+                                allCities={allCities}
+                                districts={districts}
+                                isForklift={isForklift}
+                                isCrane={isCrane}
+                                isExcavator={isExcavator}
+                                isLoader={isLoader}
+                                isTireConditionGroup={isTireConditionGroup}
+                                isPart={activeTab === 'part'}
+                                hasPendingChanges={hasPendingChanges}
+                                pendingCount={(() => {
+                                    let count = 0;
+                                    const p = pendingParams;
+                                    const c = currentParamsNoPage;
+                                    const allKeys = new Set([...Array.from(p.keys()), ...Array.from(c.keys())]);
+                                    allKeys.forEach(k => {
+                                        if (p.get(k) !== c.get(k)) count++;
+                                    });
+                                    return count;
+                                })()}
+                                features={categoryFeatures}
+                                attachments={categoryAttachments}
+                            />
                         </div>
-
-                        {/* Active Filters Area */}
-                        {hasActiveFilters && (
-                            <div className="flex flex-wrap items-center gap-2 py-2">
-                                <span className="text-xs text-neutral-400 mr-2">Filtreler:</span>
-
-                                {queryParam && (
-                                    <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
-                                        <span>Arama: {queryParam}</span>
-                                        <button onClick={removeQueryParam} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
-                                    </div>
-                                )}
-
-                                {filters.category && (
-                                    <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
-                                        <span>{categories.find(c => c.id.toString() === filters.category)?.name}</span>
-                                        <button onClick={() => removeActiveFilter('category')} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
-                                    </div>
-                                )}
-
-                                {filters.brand && (
-                                    <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
-                                        <span>{availableBrands.find(b => b.id.toString() === filters.brand)?.name || "Marka"}</span>
-                                        <button onClick={() => removeActiveFilter('brand')} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
-                                    </div>
-                                )}
-
-                                {filters.city && (
-                                    <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
-                                        <span>{filters.city}</span>
-                                        <button onClick={() => removeActiveFilter('city')} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
-                                    </div>
-                                )}
-
-                                {filters.yearRange[0] && (
-                                    <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
-                                        <span>Yıl: {filters.yearRange[0]} - {filters.yearRange[1] || 'Günümüz'}</span>
-                                        <button onClick={() => removeActiveFilter('yearRange')} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
-                                    </div>
-                                )}
-
-                                <button
-                                    onClick={handleClearAll}
-                                    className="ml-auto text-xs text-red-400 hover:text-red-300 transition-colors"
-                                >
-                                    Temizle
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="mb-6 flex items-center justify-between gap-4 lg:hidden">
-                    <div className="text-sm text-neutral-400">
-                        {totalCount} İlan listeleniyor
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <button className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0F0F0F] px-4 py-2 text-sm font-medium text-white lg:hidden">
-                            <SlidersHorizontal className="h-4 w-4" />
-                            Filtrele
-                        </button>
-                        <div className="relative">
-                            <select
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value)}
-                                className="appearance-none rounded-lg border border-white/10 bg-[#0F0F0F] py-2 pl-4 pr-10 text-sm font-medium text-white focus:border-orange-500 focus:outline-none"
-                            >
-                                <option value="newest">En Yeniler</option>
-                                <option value="price_asc">Fiyat Artan</option>
-                                <option value="price_desc">Fiyat Azalan</option>
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+                        <div className="flex-shrink-0 pt-4 border-t border-white/10">
+                            <FilterButton
+                                hasPendingChanges={hasPendingChanges}
+                                handleApply={handleApply}
+                                pendingCount={(() => {
+                                    let count = 0;
+                                    const p = pendingParams;
+                                    const c = currentParamsNoPage;
+                                    const allKeys = new Set([...Array.from(p.keys()), ...Array.from(c.keys())]);
+                                    allKeys.forEach(k => {
+                                        if (p.get(k) !== c.get(k)) count++;
+                                    });
+                                    return count;
+                                })()}
+                            />
                         </div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
-                    <aside className="hidden lg:col-span-1 lg:block">
-                        <FilterSidebar
-                            filters={filters}
-                            onFilterChange={updateFilter}
-                            onApply={() => { }}
-                            categories={categories}
-                            brands={availableBrands}
-                            isForklift={isForklift}
-                            isCrane={isCrane}
-                            isExcavator={isExcavator}
-                            isPart={activeTab === 'part'}
-                            subCategories={subCategories}
-                        />
                     </aside>
 
-                    <div className="lg:col-span-3">
-                        {loading ? (
-                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                                {[...Array(9)].map((_, i) => (
-                                    <ListingCardSkeleton key={i} />
-                                ))}
+                    <div className={cn("lg:col-span-3 transition-opacity duration-300 space-y-6", isPending ? "opacity-50" : "opacity-100")}>
+                        <nav className="flex text-xs text-neutral-400">
+                            <ol className="flex items-center space-x-2">
+                                <li>Anasayfa</li>
+                                <li><ChevronDown className="-rotate-90 w-3 h-3 text-neutral-600" /></li>
+                                <li>İlanlar</li>
+                            </ol>
+                        </nav>
+
+                        <div>
+                            <h1 className="text-3xl font-bold font-oswald text-white mb-6">{getPageTitle()}</h1>
+                            <div className="flex flex-col gap-4">
+                                <div className="flex items-center gap-2 border-b border-white/10 pb-1">
+                                    <Link href={getTabHref("sale")} className={cn("px-4 sm:px-6 py-2 rounded-t-lg text-xs sm:text-sm font-bold transition-all border flex items-center gap-2", activeTab === "sale" ? "bg-orange-600 text-black border-orange-600" : "bg-transparent text-neutral-400 border-white/10")}>
+                                        <span>SATILIK</span>
+                                        <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] sm:text-xs", activeTab === "sale" ? "bg-black/20 text-black" : "bg-white/5 text-neutral-500")}>{counts.sale}</span>
+                                    </Link>
+                                    <Link href={getTabHref("rent")} className={cn("px-4 sm:px-6 py-2 rounded-t-lg text-xs sm:text-sm font-bold transition-all border flex items-center gap-2", activeTab === "rent" ? "bg-orange-600 text-black border-orange-600" : "bg-transparent text-neutral-400 border-white/10")}>
+                                        <span>KİRALIK</span>
+                                        <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] sm:text-xs", activeTab === "rent" ? "bg-black/20 text-black" : "bg-white/5 text-neutral-500")}>{counts.rent}</span>
+                                    </Link>
+                                    <Link href={getTabHref("part")} className={cn("px-4 sm:px-6 py-2 rounded-t-lg text-xs sm:text-sm font-bold transition-all border flex items-center gap-2", activeTab === "part" ? "bg-orange-600 text-black border-orange-600" : "bg-transparent text-neutral-400 border-white/10")}>
+                                        <span>YEDEK PARÇA</span>
+                                        <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] sm:text-xs", activeTab === "part" ? "bg-black/20 text-black" : "bg-white/5 text-neutral-500")}>{counts.part}</span>
+                                    </Link>
+
+                                    <div className="ml-auto relative">
+                                        <button
+                                            onClick={() => setIsSortOpen(!isSortOpen)}
+                                            className="flex items-center gap-2 px-3 py-2 text-xs sm:text-sm text-neutral-400 hover:text-white transition-colors"
+                                        >
+                                            <ArrowUpDown className="w-4 h-4" />
+                                            <span>{SORT_OPTIONS.find(o => o.value === filters.sort)?.label || 'Sıralama'}</span>
+                                        </button>
+
+                                        {isSortOpen && (
+                                            <>
+                                                <div className="fixed inset-0 z-10" onClick={() => setIsSortOpen(false)} />
+                                                <div className="absolute right-0 top-full mt-2 w-48 bg-neutral-900 border border-white/10 rounded-xl shadow-xl z-20 overflow-hidden">
+                                                    {SORT_OPTIONS.map(opt => (
+                                                        <button
+                                                            key={opt.value}
+                                                            onClick={() => {
+                                                                updateFilter('sort', opt.value);
+                                                                setIsSortOpen(false);
+                                                            }}
+                                                            className={cn(
+                                                                "w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5",
+                                                                filters.sort === opt.value ? "text-orange-500 font-medium" : "text-neutral-400"
+                                                            )}
+                                                        >
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {hasActiveFilters && (
+                                    <div className="flex flex-wrap items-center gap-2 py-2">
+                                        <span className="text-xs text-neutral-400 mr-2">Filtreler:</span>
+                                        {appliedParams.q && (
+                                            <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
+                                                <span>Arama: {appliedParams.q}</span>
+                                                <button onClick={removeQueryParam} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
+                                            </div>
+                                        )}
+                                        {appliedParams.categorySlug && (
+                                            <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
+                                                <span>{getCategoryNameFromSlug(appliedParams.categorySlug)}</span>
+                                                <button onClick={() => removeActiveFilter('category')} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
+                                            </div>
+                                        )}
+                                        {appliedParams.brandSlug && (
+                                            <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
+                                                <span>{getBrandNameFromSlug(appliedParams.brandSlug)}</span>
+                                                <button onClick={() => removeActiveFilter('brand')} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
+                                            </div>
+                                        )}
+                                        {appliedParams.modelId && (
+                                            <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
+                                                <span>{getModelNameFromId(appliedParams.modelId)}</span>
+                                                <button onClick={() => removeActiveFilter('model')} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
+                                            </div>
+                                        )}
+                                        {appliedParams.city && (
+                                            <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
+                                                <span>{appliedParams.city}</span>
+                                                <button onClick={() => removeActiveFilter('city')} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
+                                            </div>
+                                        )}
+                                        <button onClick={handleClearAll} className="ml-auto text-xs text-red-400 hover:text-red-300 transition-colors">Temizle</button>
+                                    </div>
+                                )}
                             </div>
-                        ) : listings.length > 0 ? (
+                        </div>
+
+                        {initialListings.length > 0 ? (
                             <>
                                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                                    {listings.map((listing, index) => (
+                                    {initialListings.map((listing: any, index: number) => (
                                         <React.Fragment key={listing.id}>
-                                            <ListingCard {...listing as any} />
+                                            <ListingCard {...listing} />
                                             {index === 5 && <InFeedCTA />}
                                         </React.Fragment>
                                     ))}
                                 </div>
-
                                 <div className="mt-12 flex items-center justify-center gap-4">
-                                    <button
-                                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                                        disabled={page === 1}
-                                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white transition-all hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <ChevronLeft className="h-5 w-5" />
-                                    </button>
-                                    <div className="text-sm font-medium text-white">
-                                        Sayfa {page} / {totalPages}
-                                    </div>
-                                    <button
-                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                        disabled={page === totalPages || totalPages === 0}
-                                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white transition-all hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        <ChevronRight className="h-5 w-5" />
-                                    </button>
+                                    <button onClick={() => handlePageChange(Math.max(1, page - 1))} disabled={page === 1} className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white transition-all hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"><ChevronLeft className="h-5 w-5" /></button>
+                                    <div className="text-sm font-medium text-white">Sayfa {page} / {totalPages}</div>
+                                    <button onClick={() => handlePageChange(Math.min(totalPages, page + 1))} disabled={page === totalPages || totalPages === 0} className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white transition-all hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"><ChevronRight className="h-5 w-5" /></button>
                                 </div>
                             </>
                         ) : (
                             <NoResults />
                         )}
                     </div>
-                </div >
-            </div >
+                </div>
+            </div>
         </div >
     );
 }

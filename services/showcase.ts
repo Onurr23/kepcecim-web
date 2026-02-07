@@ -1,4 +1,5 @@
-import { createClient } from '@/utils/supabase/server';
+
+import { staticClient } from '@/utils/supabase/static-client';
 
 export interface ShowcaseMachine {
     id: string;
@@ -16,7 +17,7 @@ export interface ShowcaseMachine {
 }
 
 export async function getLatestShowcaseMachines(): Promise<ShowcaseMachine[]> {
-    const supabase = await createClient();
+    const supabase = staticClient;
 
     // 1. Fetch Sales Machines (Increased limit to 8)
     const { data: salesData, error: salesError } = await supabase
@@ -93,3 +94,4 @@ export async function getLatestShowcaseMachines(): Promise<ShowcaseMachine[]> {
 
     return allMachines;
 }
+

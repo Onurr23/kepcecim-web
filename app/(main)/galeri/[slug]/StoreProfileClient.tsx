@@ -39,15 +39,28 @@ const TABS = [
     { id: "SPARE_PART", label: "Yedek Parça", count: 0 },
 ];
 
-export default function StoreProfileClient() {
+interface StoreProfileClientProps {
+    initialSeller?: SellerProfile | null;
+    initialProducts?: any[];
+}
+
+export default function StoreProfileClient({
+    initialSeller: initialSellerProp,
+    initialProducts: initialProductsProp = [],
+}: StoreProfileClientProps = {}) {
     const params = useParams();
     const slug = params?.slug as string;
-    const [loading, setLoading] = useState(true);
-    const [seller, setSeller] = useState<SellerProfile | null>(null);
-    const [products, setProducts] = useState<any[]>([]);
+    const hasInitialData = initialSellerProp != null;
+    const [loading, setLoading] = useState(!hasInitialData);
+    const [seller, setSeller] = useState<SellerProfile | null>(initialSellerProp ?? null);
+    const [products, setProducts] = useState<any[]>(initialProductsProp ?? []);
     const [activeTab, setActiveTab] = useState("all");
 
     useEffect(() => {
+        if (hasInitialData) {
+            setLoading(false);
+            return;
+        }
         async function fetchData() {
             if (!slug) return;
             const supabase = createClient();

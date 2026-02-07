@@ -1,11 +1,13 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState } from "react";
 import { ArrowRight, CalendarClock, Settings, Store, Tractor, Wrench } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import AppRedirectOverlay from "@/components/ui/AppRedirectOverlay";
 
 export default function SellerBanner() {
+    const [isOverlayOpen, setIsOverlayOpen] = useState(false);
     return (
         <section className="w-full bg-neutral-900 border-t border-white/10">
 
@@ -50,43 +52,39 @@ export default function SellerBanner() {
                             <span className="text-xs font-bold uppercase tracking-widest">Kurumsal ve Bireysel Satış</span>
                         </div>
 
-                        <h2 className="text-4xl font-extrabold uppercase tracking-tighter text-white md:text-6xl mb-6">
+                        <h2 className="text-4xl font-extrabold uppercase tracking-tighter text-white md:text-6xl mb-8">
                             MAKİNENİ <span className="text-orange-500">DEĞERİNDE</span> SAT.
                         </h2>
 
-                        <p className="max-w-2xl text-lg md:text-xl text-neutral-400 mb-10 leading-relaxed">
+                        <p className="max-w-2xl text-lg md:text-xl text-gray-300 mb-12 leading-relaxed">
                             Türkiye'nin en aktif pazar yerinde ücretsiz ilanını ver, binlerce potansiyel alıcıya anında ulaş.
                         </p>
 
-                        <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                        <button
+                            onClick={() => setIsOverlayOpen(true)}
+                            className={cn(
+                                "group flex items-center gap-4 rounded-xl px-10 py-5",
+                                "bg-white text-black text-lg font-black tracking-wide",
+                                "transition-all duration-300 transform",
+                                "hover:scale-105 hover:bg-white",
+                                "hover:shadow-[0_0_20px_rgba(249,115,22,0.6)] shadow-xl shadow-white/5"
+                            )}
                         >
-                            <Link
-                                href="/ilan-ver"
-                                className={cn(
-                                    "group flex items-center gap-4 rounded-xl px-10 py-5",
-                                    "bg-white text-black text-lg font-black tracking-wide",
-                                    "transition-all duration-300",
-                                    "hover:bg-gray-100 hover:shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] shadow-xl shadow-white/5"
-                                )}
-                            >
-                                <span>ÜCRETSİZ İLAN VER</span>
-                                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                            </Link>
-                        </motion.div>
+                            <span>ÜCRETSİZ İLAN VER</span>
+                            <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                        </button>
                     </div>
                 </div>
             </div>
 
             {/* 2. BOTTOM GRID: BUYER FOCUSED */}
-            <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-16 md:pb-20">
+            <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-16 md:pb-20 pt-12">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Card 1: SATILIK */}
                     <Link href="/ilanlar/satilik" className="group">
-                        <div className="h-full bg-neutral-900/50 border border-white/5 hover:border-orange-500/50 rounded-2xl p-8 transition-all duration-300 hover:bg-neutral-800/50 hover:shadow-2xl hover:shadow-orange-900/10 flex flex-col items-start gap-4">
+                        <div className="h-full bg-neutral-900/50 border border-white/10 hover:border-orange-500/50 rounded-2xl p-8 transition-all duration-300 hover:bg-white/5 hover:shadow-2xl hover:shadow-orange-900/10 flex flex-col items-start gap-4">
                             <div className="p-3 bg-neutral-800 rounded-xl group-hover:bg-orange-500/10 transition-colors">
-                                <Tractor className="h-16 w-16 text-neutral-400 group-hover:text-orange-500 transition-colors stroke-2" />
+                                <Tractor className="h-12 w-12 text-gray-400 group-hover:text-orange-500 transition-colors stroke-1.5" />
                             </div>
                             <div>
                                 <h3 className="text-xl font-bold text-white mb-2 group-hover:text-orange-500 transition-colors">SATILIK İŞ MAKİNELERİ</h3>
@@ -94,7 +92,7 @@ export default function SellerBanner() {
                                     Ekskavatörden forkliftlere, binlerce satılık makineyi inceleyin.
                                 </p>
                                 <div className="flex items-center gap-2 text-sm font-bold text-white/50 group-hover:text-white transition-colors">
-                                    İlanlara Git <ArrowRight className="h-4 w-4" />
+                                    İlanlara Git <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
                                 </div>
                             </div>
                         </div>
@@ -102,9 +100,9 @@ export default function SellerBanner() {
 
                     {/* Card 2: KİRALIK */}
                     <Link href="/ilanlar/kiralik" className="group">
-                        <div className="h-full bg-neutral-900/50 border border-white/5 hover:border-orange-500/50 rounded-2xl p-8 transition-all duration-300 hover:bg-neutral-800/50 hover:shadow-2xl hover:shadow-orange-900/10 flex flex-col items-start gap-4">
+                        <div className="h-full bg-neutral-900/50 border border-white/10 hover:border-orange-500/50 rounded-2xl p-8 transition-all duration-300 hover:bg-white/5 hover:shadow-2xl hover:shadow-orange-900/10 flex flex-col items-start gap-4">
                             <div className="p-3 bg-neutral-800 rounded-xl group-hover:bg-orange-500/10 transition-colors">
-                                <CalendarClock className="h-16 w-16 text-neutral-400 group-hover:text-orange-500 transition-colors stroke-2" />
+                                <CalendarClock className="h-12 w-12 text-gray-400 group-hover:text-orange-500 transition-colors stroke-1.5" />
                             </div>
                             <div>
                                 <h3 className="text-xl font-bold text-white mb-2 group-hover:text-orange-500 transition-colors">KİRALIK ÇÖZÜMLER</h3>
@@ -112,7 +110,7 @@ export default function SellerBanner() {
                                     Dönemsel ihtiyaçlarınız için en uygun kiralık makineleri bulun.
                                 </p>
                                 <div className="flex items-center gap-2 text-sm font-bold text-white/50 group-hover:text-white transition-colors">
-                                    Kiralık Ara <ArrowRight className="h-4 w-4" />
+                                    Kiralık Ara <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
                                 </div>
                             </div>
                         </div>
@@ -120,9 +118,9 @@ export default function SellerBanner() {
 
                     {/* Card 3: YEDEK PARÇA */}
                     <Link href="/ilanlar/yedek-parca" className="group">
-                        <div className="h-full bg-neutral-900/50 border border-white/5 hover:border-orange-500/50 rounded-2xl p-8 transition-all duration-300 hover:bg-neutral-800/50 hover:shadow-2xl hover:shadow-orange-900/10 flex flex-col items-start gap-4">
+                        <div className="h-full bg-neutral-900/50 border border-white/10 hover:border-orange-500/50 rounded-2xl p-8 transition-all duration-300 hover:bg-white/5 hover:shadow-2xl hover:shadow-orange-900/10 flex flex-col items-start gap-4">
                             <div className="p-3 bg-neutral-800 rounded-xl group-hover:bg-orange-500/10 transition-colors">
-                                <Wrench className="h-16 w-16 text-neutral-400 group-hover:text-orange-500 transition-colors stroke-2" />
+                                <Wrench className="h-12 w-12 text-gray-400 group-hover:text-orange-500 transition-colors stroke-1.5" />
                             </div>
                             <div>
                                 <h3 className="text-xl font-bold text-white mb-2 group-hover:text-orange-500 transition-colors">YEDEK PARÇA & ATAŞMAN</h3>
@@ -130,13 +128,19 @@ export default function SellerBanner() {
                                     Makineniz durmasın. Orijinal ve yan sanayi yedek parçalara ulaşın.
                                 </p>
                                 <div className="flex items-center gap-2 text-sm font-bold text-white/50 group-hover:text-white transition-colors">
-                                    Parça Bul <ArrowRight className="h-4 w-4" />
+                                    Parça Bul <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
                                 </div>
                             </div>
                         </div>
                     </Link>
                 </div>
             </div>
+
+            <AppRedirectOverlay
+                isOpen={isOverlayOpen}
+                onClose={() => setIsOverlayOpen(false)}
+                triggerType="general"
+            />
         </section>
     );
 }

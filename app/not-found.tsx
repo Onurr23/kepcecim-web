@@ -1,10 +1,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
+import Header from "@/components/Header";
 
 export default function NotFound() {
     return (
-        <div className="relative min-h-screen w-full flex flex-col bg-black overflow-hidden selection:bg-orange-500/30">
+        <div className="relative min-h-screen w-full flex flex-col bg-black overflow-hidden selection:bg-orange-500/30 pt-24">
+            <Header />
 
             {/* 1. IMAGE PLACEMENT (The Stage) */}
             <div className="relative w-full h-[50vh] md:h-[60vh]">

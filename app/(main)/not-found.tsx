@@ -7,10 +7,10 @@ export default function NotFound() {
       <div className="text-center px-4">
         <h1 className="text-6xl font-bold mb-4">404</h1>
         <h2 className="text-2xl font-semibold mb-4 text-white/90">
-          Page Not Found
+          Sayfa Bulunamadı
         </h2>
         <p className="text-white/60 mb-8 max-w-md mx-auto">
-          The page you are looking for does not exist or has been moved.
+          Aradığınız sayfa mevcut değil veya taşınmış olabilir.
         </p>
         <Link
           href="/"
@@ -21,7 +21,7 @@ export default function NotFound() {
             "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-dark"
           )}
         >
-          Return Home
+          Ana Sayfaya Dön
         </Link>
       </div>
     </div>

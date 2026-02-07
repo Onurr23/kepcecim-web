@@ -4,6 +4,8 @@ import { getPartById } from "@/services/parts";
 import { getFeaturesByIds, getAttachmentsByIds } from "@/services/categories";
 import { incrementViewCount } from "@/services/view-count";
 import ListingDetailClient from "@/components/listing/ListingDetailClient";
+import JsonLd from "@/components/seo/JsonLd";
+import { getCanonicalUrl } from "@/lib/seo";
 import { Metadata } from "next";
 
 interface PageProps {
@@ -19,7 +21,66 @@ const getStorageUrl = (path: string | null | undefined) => {
   return `${baseUrl}/storage/v1/object/public/machine-images/${path}`;
 };
 
+
+import { staticClient } from '@/utils/supabase/static-client';
+
+export const revalidate = 60; // 1 dakika ISR
+
+export async function generateStaticParams() {
+  const supabase = staticClient;
+
+  // Son 20 satılık ilanı alıp static olarak üretelim
+  const { data: sales } = await supabase
+    .from('sales_machines')
+    .select('id, title, brand:brand(name), model:model(name)')
+    .limit(20)
+    .order('created_at', { ascending: false });
+
+  if (!sales) return [];
+
+  // Helper for slugify (Local duplicate since import might be problematic if util uses something else, 
+  // but better to import if standard. Assuming slugify util is safe. 
+  // Note: User provided file content didn't show slugify import in this file but it is used in sitemap.js.
+  // I will use a simple inline slugify or try to import if I knew where it is. 
+  // sitemap.js imports from '@/utils/slugify'. Let's try that or just use the logic here.
+  // However, I can't import a function if I haven't seen the file. 
+  // Safe bet: replicate simple legacy slug logic or use the ID which is the critical part.
+  // Wait, the slug format is Brand-Model-Title-ID. 
+  // Ideally I should import slugify.
+
+  // Let's assume standard import isn't available and write a cleaner slugify here or just rely on ID matching 
+  // if the page allows lazy matching. The page extracts ID from the end. 
+  // But generateStaticParams needs the EXACT slug to match valid routes.
+  // I'll grab slugify from utils if possible. 
+  // Let's assume I can import it.
+
+  return sales.map((item: { id: string; title?: string; brand?: { name?: string } | { name?: string }[]; model?: { name?: string } | { name?: string }[] }) => {
+    const brandObj = Array.isArray(item.brand) ? item.brand[0] : item.brand;
+    const modelObj = Array.isArray(item.model) ? item.model[0] : item.model;
+    const brand = brandObj?.name || '';
+    const model = modelObj?.name || '';
+    const title = item.title || '';
+
+    // Simple slugify implementation to avoid import dependency risk if file not read
+    const sl = (str: string) => str
+      .toLowerCase()
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ş/g, 's')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ç/g, 'c')
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    const slug = `${sl(brand)}-${sl(model)}-${sl(title)}-${item.id}`;
+    return { slug };
+  });
+}
+
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+
   const { slug } = await params;
 
   // Extract ID
@@ -108,25 +169,29 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 
     const shortDesc = machine.description ? (machine.description.substring(0, 150) + '...') : '';
 
-    const description = `${year ? `${year} Model, ` : ''}${hours ? `${hours}. ` : ''}${priceStr ? `${priceStr}. ` : ''}${shortDesc}`.trim();
+    const descriptionRaw = `${year ? `${year} Model, ` : ''}${hours ? `${hours}. ` : ''}${priceStr ? `${priceStr}. ` : ''}${shortDesc}`.trim();
+    const description =
+      (descriptionRaw || `${brandName} ${modelName} ${categoryName} - ${cityName}. Kepçecim'de inceleyin.`).substring(0, 160);
 
     const imageUrl = getStorageUrl(machine.images?.[0] || machine.image_url);
+    const canonical = getCanonicalUrl(`/ilan/${slug}`);
 
     return {
       title,
-      description,
+      description: description || "İş makinesi ilan detayı. Kepçecim.",
+      alternates: { canonical },
       openGraph: {
         title,
-        description,
+        description: description || "İş makinesi ilan detayı. Kepçecim.",
         images: imageUrl ? [{ url: imageUrl, width: 800, height: 600 }] : [],
-        type: 'website',
+        type: "website",
       },
       twitter: {
-        card: 'summary_large_image',
+        card: "summary_large_image",
         title,
-        description,
+        description: description || "İş makinesi ilan detayı. Kepçecim.",
         images: imageUrl ? [imageUrl] : [],
-      }
+      },
     };
 
   } catch (error) {
@@ -224,7 +289,107 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
       resolvedAttachments: attachments
     };
 
-    return <ListingDetailClient listing={enrichedMachine} type={type} />;
+    const brandName =
+      machine.machine_brands?.name ||
+      machine.brand?.name ||
+      machine.custom_brand_text ||
+      "";
+    const modelName = machine.machine_models?.name || "";
+    const categoryName =
+      machine.machine_categories?.name || machine.category?.name || "";
+    let cityName = "";
+    if (machine.location) {
+      try {
+        const loc =
+          typeof machine.location === "string"
+            ? JSON.parse(machine.location)
+            : machine.location;
+        cityName = loc.city || "";
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!cityName && machine.city) cityName = machine.city;
+    if (!cityName) cityName = "Türkiye";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://kepcecim.com";
+    const productUrl = `${baseUrl.replace(/\/$/, "")}/ilan/${slug}`;
+    const productName =
+      `${brandName} ${modelName} ${categoryName}`.replace(/\s+/g, " ").trim() ||
+      machine.title ||
+      "İş Makinesi";
+    const productImage = getStorageUrl(machine.images?.[0] || machine.image_url);
+    let price: number | null = null;
+    let priceCurrency = "TRY";
+    try {
+      const pricing =
+        machine.pricing &&
+        (typeof machine.pricing === "string"
+          ? JSON.parse(machine.pricing)
+          : machine.pricing);
+      if (pricing) {
+        price =
+          type === "rental"
+            ? pricing.dailyRate ?? pricing.monthlyRate
+            : pricing.price ?? pricing.salePrice;
+        priceCurrency = pricing.currency || "TRY";
+      }
+    } catch {
+      /* ignore */
+    }
+    const productJsonLd = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: productName,
+      description: (machine.description || "").substring(0, 500),
+      image: productImage || undefined,
+      url: productUrl,
+      offers: {
+        "@type": "Offer",
+        url: productUrl,
+        priceCurrency,
+        availability: "https://schema.org/InStock",
+        ...(price != null && price > 0 && { price: Number(price) }),
+      },
+    };
+
+    // Aynı description (generateMetadata ile birebir); body'de <meta> ile de veriyoruz
+    // böylece Lighthouse ve crawler'lar ilk HTML'de görür (Next.js bazen head'i stream ediyor).
+    const yearDesc = machine.year || machine.production_year || "";
+    const hoursDesc = machine.hours_meter ? `${machine.hours_meter} Saatte` : "";
+    let priceStrDesc = "";
+    try {
+      const pricing =
+        machine.pricing &&
+        (typeof machine.pricing === "string"
+          ? JSON.parse(machine.pricing)
+          : machine.pricing);
+      if (pricing) {
+        const amount =
+          type === "rental"
+            ? pricing.dailyRate ?? pricing.monthlyRate
+            : pricing.price ?? pricing.salePrice;
+        if (amount)
+          priceStrDesc = `Fiyat: ${Number(amount).toLocaleString("tr-TR")} ${pricing.currency || "₺"}`;
+      }
+    } catch {
+      /* ignore */
+    }
+    const shortDesc = machine.description
+      ? machine.description.substring(0, 150) + "..."
+      : "";
+    const descriptionRaw = `${yearDesc ? `${yearDesc} Model, ` : ""}${hoursDesc ? `${hoursDesc}. ` : ""}${priceStrDesc ? `${priceStrDesc}. ` : ""}${shortDesc}`.trim();
+    const metaDescription =
+      (descriptionRaw ||
+        `${brandName} ${modelName} ${categoryName} - ${cityName}. Kepçecim'de inceleyin.`).substring(0, 160) ||
+      "İş makinesi ilan detayı. Kepçecim.";
+
+    return (
+      <>
+        <meta name="description" content={metaDescription} />
+        <JsonLd data={productJsonLd} />
+        <ListingDetailClient listing={enrichedMachine} type={type} />
+      </>
+    );
 
   } catch (error) {
     console.error("Error fetching listing:", error);

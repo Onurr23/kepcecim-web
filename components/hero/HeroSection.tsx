@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import GlobalSearchInput from "@/components/ui/GlobalSearchInput";
-import TrustStrip from "@/components/home/TrustStrip";
 
 export default function HeroSection() {
   return (
@@ -28,7 +27,7 @@ export default function HeroSection() {
       </div>
 
       {/* Content Layer (Z-10) */}
-      <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center sm:px-6 lg:px-8 pb-32">
+      <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center sm:px-6 lg:px-8 pb-16">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -57,8 +56,6 @@ export default function HeroSection() {
           <GlobalSearchInput />
         </motion.div>
       </div>
-
-      <TrustStrip />
     </section>
   );
 }

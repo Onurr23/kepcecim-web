@@ -31,6 +31,12 @@ export default async function sitemap() {
             changeFrequency: 'daily',
             priority: 0.8,
         },
+        {
+            url: `${baseUrl}/galeriler`,
+            lastModified: new Date(),
+            changeFrequency: 'weekly',
+            priority: 0.7,
+        },
     ];
 
     // 2. Fetch Data (Parallel)
