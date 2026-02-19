@@ -14,6 +14,16 @@ function mapTireCondition(condition: string | null): number | null {
 
 import { SupabaseClient } from '@supabase/supabase-js';
 
+/** Only pass value to RPC if it is a valid model ID (UUID or numeric). Never pass URL slug (e.g. "120g"). */
+function toModelIdOnly(value: unknown): string | null {
+    if (value == null) return null;
+    const s = typeof value === 'string' ? value.trim() : String(value).trim();
+    if (!s) return null;
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) return s;
+    if (/^\d+$/.test(s)) return s;
+    return null;
+}
+
 export async function searchSalesMachines(filters: any, page: number = 1, limit: number = 20, client?: SupabaseClient) {
     const supabase = client || await createClient();
 
@@ -29,13 +39,15 @@ export async function searchSalesMachines(filters: any, page: number = 1, limit:
         usageType = filters.machineStatus;
     }
 
+    const inModelId = toModelIdOnly(filters.model);
+
     const rpcParams = {
         search_term: filters.query || null,
         sort_by: filters.sort || 'created_at_desc',
 
         in_category_id: filters.category || null,
         in_brand_id: filters.brand || null,
-        in_model_id: filters.model ? filters.model : null, // Explicitly pass model ID
+        in_model_id: inModelId,
 
         in_city: filters.city || null,
         in_district: filters.district || null,
@@ -99,7 +111,8 @@ export async function getSalesMachineCount(filters: any) {
     if (filters.query) query = query.textSearch('searchable_text', filters.query);
     if (filters.category) query = query.eq('category', filters.category);
     if (filters.brand) query = query.eq('brand', filters.brand);
-    if (filters.model) query = query.eq('model', filters.model);
+    const modelId = toModelIdOnly(filters.model);
+    if (modelId) query = query.eq('model', modelId);
 
     if (filters.city) query = query.contains('location', { city: filters.city });
     if (filters.district) query = query.contains('location', { district: filters.district });

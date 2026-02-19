@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { slugify } from "@/utils/slugify";
 
 interface Brand {
     id: string;
@@ -13,53 +12,85 @@ interface SeoLinksSectionProps {
     brands: Brand[];
 }
 
-const SEO_LINKS_BASE = [
+type ListingTab = "satilik" | "kiralik";
+
+function buildListingsUrl(
+    tab: ListingTab,
+    params?: {
+        kategori?: string;
+        marka?: string;
+        model?: string;
+        sehir?: string;
+        alt_tip?: string;
+        sinif?: string;
+    }
+): string {
+    const path = `/ilanlar/${tab}`;
+    if (!params) return path;
+    const search = new URLSearchParams();
+    if (params.kategori) search.set("kategori", params.kategori);
+    if (params.marka) search.set("marka", params.marka);
+    if (params.model) search.set("model", params.model);
+    if (params.sehir) search.set("sehir", params.sehir);
+    if (params.alt_tip) search.set("alt_tip", params.alt_tip);
+    if (params.sinif) search.set("sinif", params.sinif);
+    const qs = search.toString();
+    return qs ? `${path}?${qs}` : path;
+}
+
+const SEO_LINKS: { title: string; links: { label: string; href: string }[] }[] = [
     {
-        title: "Popüler",
+        title: "VİTRİN",
         links: [
-            { label: "Satılık Ekskavatör", href: "/ilanlar/satilik-ekskavator" },
-            { label: "Beko Loder Fiyatları", href: "/ilanlar/beko-loder" },
-            { label: "Kiralık Vinç", href: "/ilanlar/kiralik-vinc" },
-            { label: "Sahibinden Forklift", href: "/ilanlar/forklift" },
-            { label: "Mini Yükleyici", href: "/ilanlar/mini-yukleyici" },
+            { label: "Sahibinden Kepçe", href: buildListingsUrl("satilik", { kategori: "bekoloder" }) },
+            { label: "Satılık Ekskavatör", href: buildListingsUrl("satilik", { kategori: "ekskavator" }) },
+            { label: "Kiralık Vinç", href: buildListingsUrl("kiralik", { kategori: "mobil-vinc" }) },
+            { label: "Kiralık Forklift", href: buildListingsUrl("kiralik", { kategori: "forklift" }) },
+            { label: "Kiralık Vinç", href: buildListingsUrl("kiralik", { kategori: "mobil-vinc" }) },
+            { label: "Traktör Kepçe", href: buildListingsUrl("satilik", { kategori: "bekoloder" }) },
+            { label: "Mini Ekskavatör", href: buildListingsUrl("satilik", { kategori: "ekskavator", sinif: "Mini" }) },
         ],
     },
     {
-        title: "Şehirler",
+        title: "MARKA & MODEL",
         links: [
-            { label: "Ankara İş Makinesi", href: "/sehir/ankara" },
-            { label: "İstanbul Satılık Kepçe", href: "/sehir/istanbul" },
-            { label: "İzmir Kiralık Vinç", href: "/sehir/izmir" },
-            { label: "Bursa İş Makineleri", href: "/sehir/bursa" },
-            { label: "Konya Galericiler", href: "/sehir/konya" },
+            { label: "JCB 3CX Satılık", href: buildListingsUrl("satilik", { marka: "jcb", model: "3CX" }) },
+            { label: "Cat 444", href: buildListingsUrl("satilik", { marka: "caterpillar", model: "444" }) },
+            { label: "Hidromek 102B", href: buildListingsUrl("satilik", { marka: "hidromek", model: "102B" }) },
+            { label: "Cat 320D", href: buildListingsUrl("satilik", { marka: "caterpillar", model: "320D" }) },
+            { label: "Asimato Forklift", href: buildListingsUrl("satilik", { marka: "asimato", kategori: "forklift" }) },
+            { label: "Volvo Lastikli Yükleyici", href: buildListingsUrl("satilik", { kategori: "loder-yukleyici", marka: "volvo", alt_tip: "Lastikli" }) },
+            { label: "Sumitomo Ekskavatör", href: buildListingsUrl("satilik", { kategori: "ekskavator", marka: "sumitomo" }) },
         ],
     },
     {
-        title: "Özel Aramalar",
+        title: "ŞEHİR & HİZMET",
         links: [
-            { label: "2. El Makine Fiyatları", href: "/kategori/2-el-makine" },
-            { label: "Acil Satılık Kepçeler", href: "/etiket/acil-satilik" },
-            { label: "İş Makinesi Yedek Parça", href: "/kategori/yedek-parca" },
-            { label: "Hidrolik Kırıcılar", href: "/kategori/hidrolik-kirici" },
+            { label: "İstanbul Kiralık Forklift", href: buildListingsUrl("kiralik", { sehir: "İstanbul", kategori: "forklift" }) },
+            { label: "Kocaeli Vinç Kiralama", href: buildListingsUrl("kiralik", { sehir: "Kocaeli", kategori: "mobil-vinc" }) },
+            { label: "Hatay Satılık Ekskavatör", href: buildListingsUrl("satilik", { sehir: "Hatay", kategori: "ekskavator" }) },
+            { label: "Tekirdağ İş Makineleri", href: buildListingsUrl("satilik", { sehir: "Tekirdağ" }) },
+            { label: "Malatya Kiralık Kepçe", href: buildListingsUrl("kiralik", { sehir: "Malatya", kategori: "bekoloder" }) },
+            { label: "Bilecik Kiralık Kepçe", href: buildListingsUrl("kiralik", { sehir: "Bilecik", kategori: "bekoloder" }) },
+            { label: "Ankara Beko Loder", href: buildListingsUrl("satilik", { sehir: "Ankara", kategori: "bekoloder" }) },
+        ],
+    },
+    {
+        title: "FIRSATLAR",
+        links: [
+            { label: "2. El İş Makinesi", href: buildListingsUrl("satilik") },
+            { label: "Cisibi Kepçe Fiyatları", href: buildListingsUrl("satilik", { marka: "jcb", kategori: "bekoloder" }) },
+            { label: "Sahibinden JCB", href: buildListingsUrl("satilik", { marka: "jcb" }) },
+            { label: "Telehandler (Manitou)", href: buildListingsUrl("satilik", { kategori: "telehandler-teleskobik-yukleyici", marka: "manitou" }) },
+            { label: "Elektrikli Forklift", href: buildListingsUrl("satilik", { kategori: "forklift", alt_tip: "Elektrikli" }) },
+            { label: "9 Tonluk Ekskavatör", href: buildListingsUrl("satilik", { kategori: "ekskavator" }) },
+            { label: "Acil Satılık Makine", href: buildListingsUrl("satilik") },
         ],
     },
 ];
 
 export default function SeoLinksSection({ brands }: SeoLinksSectionProps) {
-    const brandLinks = {
-        title: "Markalar",
-        links: brands.slice(0, 5).map(brand => ({
-            label: brand.name,
-            href: `/ilanlar/${slugify(brand.name)}`
-        }))
-    };
-
-    // Markaları 2. sıraya ekleyelim (özgün tasarımdaki gibi)
-    const seoLinks = [
-        SEO_LINKS_BASE[0],
-        brandLinks,
-        ...SEO_LINKS_BASE.slice(1)
-    ];
+    const seoLinks = SEO_LINKS;
 
     return (
         <section className="bg-[#0a0a0a] py-12 px-4 md:px-8 border-t border-white/5">

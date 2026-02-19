@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 
 import { getDistrictsForCity } from "@/utils/cityDistricts";
+import { fetchModelsByBrand } from "@/app/actions/listings";
 
 export interface FilterState {
     // Global
@@ -94,8 +95,23 @@ export function useListingFilters(
 
     // Sync Props to State (Server-Driven Updates)
     useEffect(() => {
-        if (initialModels) setAvailableModels(initialModels);
+        setAvailableModels(initialModels ?? []);
     }, [initialModels]);
+
+    // When brand is selected, fetch models by brand (so model list appears without needing to click Apply)
+    useEffect(() => {
+        if (!filters.brand) {
+            setAvailableModels([]);
+            return;
+        }
+        let cancelled = false;
+        fetchModelsByBrand(filters.brand).then((data) => {
+            if (!cancelled) setAvailableModels(data ?? []);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [filters.brand]);
 
     useEffect(() => {
         if (initialFeatures) setCategoryFeatures(initialFeatures);
@@ -113,6 +129,28 @@ export function useListingFilters(
         if (initialBrands) setBrands(initialBrands);
         setAvailableBrands(initialBrands || []);
     }, [initialBrands]);
+
+    // Sync filter state from server when URL/initialFilterOverrides change (e.g. after navigation)
+    useEffect(() => {
+        if (!initialFilterOverrides) return;
+        setFilters((prev) => {
+            let changed = false;
+            const next = { ...prev };
+            if (initialFilterOverrides.category !== undefined && next.category !== (initialFilterOverrides.category ?? null)) {
+                next.category = initialFilterOverrides.category ?? null;
+                changed = true;
+            }
+            if (initialFilterOverrides.brand !== undefined && next.brand !== (initialFilterOverrides.brand ?? null)) {
+                next.brand = initialFilterOverrides.brand ?? null;
+                changed = true;
+            }
+            if (initialFilterOverrides.model !== undefined && next.model !== (initialFilterOverrides.model ?? null)) {
+                next.model = initialFilterOverrides.model ?? null;
+                changed = true;
+            }
+            return changed ? next : prev;
+        });
+    }, [initialFilterOverrides?.category, initialFilterOverrides?.brand, initialFilterOverrides?.model]);
 
     // --- Helpers to Identify Category Context ---
     const getCategoryName = useCallback(() => {

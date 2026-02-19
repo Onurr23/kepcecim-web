@@ -1,14 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
-import AppRedirectOverlay from "@/components/ui/AppRedirectOverlay";
+import { useAppModal } from "@/contexts/AppModalContext";
 
 export default function Header() {
-  const [isAppModalOpen, setIsAppModalOpen] = useState(false);
+  const { openModal } = useAppModal();
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-20 border-b border-white/10 bg-black/30 backdrop-blur-xl">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
@@ -56,26 +54,20 @@ export default function Header() {
 
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setIsAppModalOpen(true)}
+            onClick={() => openModal("header")}
             className="hidden rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white/90 transition hover:bg-white/10 hover:text-white lg:block"
           >
             Uygulamayı İndir
           </button>
 
           <button
-            onClick={() => setIsAppModalOpen(true)}
+            onClick={() => openModal("header")}
             className="flex items-center gap-2 rounded-full bg-orange-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-600/20 transition hover:bg-orange-700"
           >
             <Plus className="h-4 w-4" />
             Ücretsiz İlan Ver
           </button>
         </div>
-
-        <AppRedirectOverlay
-          isOpen={isAppModalOpen}
-          onClose={() => setIsAppModalOpen(false)}
-          triggerType="header"
-        />
       </div>
     </header>
   );

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Instagram, Linkedin, Youtube, QrCode } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Instagram, Linkedin, Youtube } from "lucide-react";
+import { AppStoreQR } from "@/components/AppStoreQR";
+import OpenAppModalTrigger from "@/components/OpenAppModalTrigger";
+import { APP_STORE_URL_IOS, APP_STORE_URL_ANDROID } from "@/constants/appStore";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -54,8 +56,12 @@ export default function Footer() {
             <ul className="space-y-3">
               <li><Link href="/ilanlar" className="inline-block text-gray-400 transition-transform hover:text-white hover:translate-x-1">İlanlar</Link></li>
               <li><Link href="/galeriler" className="inline-block text-gray-400 transition-transform hover:text-white hover:translate-x-1">Galeriler</Link></li>
-              <li><Link href="/fiyatlar" className="inline-block text-gray-400 transition-transform hover:text-white hover:translate-x-1">Fiyat Listesi</Link></li>
-              <li><Link href="/satici-ol" className="inline-block text-gray-400 transition-transform hover:text-white hover:translate-x-1">Satıcı Ol</Link></li>
+              <li><Link href="/ilanlar" className="inline-block text-gray-400 transition-transform hover:text-white hover:translate-x-1">Fiyat Listesi</Link></li>
+              <li>
+                <OpenAppModalTrigger triggerType="general" className="inline-block text-gray-400 transition-transform hover:text-white hover:translate-x-1">
+                  Satıcı Ol
+                </OpenAppModalTrigger>
+              </li>
               <li><Link href="/kurumsal/sss" className="inline-block text-gray-400 transition-transform hover:text-white hover:translate-x-1">Yardım</Link></li>
             </ul>
           </div>
@@ -73,38 +79,39 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Col 4: App CTA (New Design) */}
-          <div className="flex flex-col justify-start">
+          {/* Col 4: Mobil Uygulama */}
+          <div className="flex flex-col justify-start min-w-0">
             <h3 className="mb-6 font-bold text-orange-500 uppercase tracking-widest text-sm">Mobil Uygulama</h3>
 
-            {/* Glassmorphism Download Card */}
-            <div className="group relative overflow-hidden rounded-2xl border border-orange-500/20 bg-white/5 p-4 backdrop-blur-sm transition-all hover:bg-white/10 hover:border-orange-500/30">
-              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-orange-500/10 blur-3xl transition-all group-hover:bg-orange-500/20" />
-
-              <div className="relative flex items-center gap-4">
-                {/* QR Code */}
-                <div className="flex-shrink-0 rounded-xl bg-white p-2 shadow-lg">
-                  {/* Real QR or Placeholder */}
-                  <QrCode className="h-20 w-20 text-black" />
+            <div className="relative rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-6 shadow-xl shadow-black/20 min-w-[280px]">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-orange-500/5 via-transparent to-transparent pointer-events-none" />
+              <div className="relative flex flex-col gap-6">
+                <div>
+                  <h4 className="text-lg font-bold text-white">Kepçecim Cepte</h4>
+                  <p className="mt-1 text-xs text-gray-500">Uygulamayı indir, ticarete başla</p>
                 </div>
 
-                {/* Text & Buttons */}
-                <div className="flex flex-col gap-3">
-                  <h4 className="text-lg font-bold text-white">Kepçecim Cepte</h4>
-                  <div className="flex flex-col gap-2">
-                    <button className="flex items-center gap-2 rounded bg-black/40 px-3 py-1.5 text-[10px] font-bold text-white transition-colors hover:bg-black/60 border border-white/10">
-                      <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.5 1.3 0 2.5.87 3.29.87.78 0 2.26-1.07 3.93-.91 1.32.09 2.38.57 3.12 1.58-2.73 1.57-2.31 5.34.69 7.07zm-4.61-12.2c.71-1.02 1.23-2.49.92-3.8 1.27.08 2.53.86 3.09 2.14-1.29.98-2.88 1.94-4.01 1.66z" /></svg>
-                      App Store
-                    </button>
-                    <button className="flex items-center gap-2 rounded bg-black/40 px-3 py-1.5 text-[10px] font-bold text-white transition-colors hover:bg-black/60 border border-white/10">
-                      <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24"><path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.3,4.25L17.41,7.13L15.39,9.15L14.54,11.15L6.05,2.66L20.3,10.88C20.71,11.13 20.71,11.75 20.3,12L17.41,9.15M16.81,8.88L14.54,11.15L6.05,2.66L16.81,8.88Z" /></svg>
-                      Google Play
-                    </button>
-                  </div>
+                <AppStoreQR
+                  platform="both"
+                  size={90}
+                  showLabels={true}
+                  labelClassName="text-gray-400"
+                  variant="card"
+                  className="gap-6"
+                />
+
+                <div className="flex flex-col gap-2 pt-1 border-t border-white/10">
+                  <a href={APP_STORE_URL_IOS} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2.5 rounded-xl bg-white/10 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/15 active:scale-[0.98] border border-white/10">
+                    <svg className="h-5 w-5 flex-shrink-0 fill-current" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.5 1.3 0 2.5.87 3.29.87.78 0 2.26-1.07 3.93-.91 1.32.09 2.38.57 3.12 1.58-2.73 1.57-2.31 5.34.69 7.07zm-4.61-12.2c.71-1.02 1.23-2.49.92-3.8 1.27.08 2.53.86 3.09 2.14-1.29.98-2.88 1.94-4.01 1.66z" /></svg>
+                    App Store
+                  </a>
+                  <a href={APP_STORE_URL_ANDROID} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2.5 rounded-xl bg-white/10 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/15 active:scale-[0.98] border border-white/10">
+                    <svg className="h-5 w-5 flex-shrink-0 fill-current" viewBox="0 0 24 24"><path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.3,4.25L17.41,7.13L15.39,9.15L14.54,11.15L6.05,2.66L20.3,10.88C20.71,11.13 20.71,11.75 20.3,12L17.41,9.15M16.81,8.88L14.54,11.15L6.05,2.66L16.81,8.88Z" /></svg>
+                    Google Play
+                  </a>
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>

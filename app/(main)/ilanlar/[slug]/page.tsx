@@ -143,7 +143,6 @@ export default async function DynamicListingsPage({ params, searchParams }: Prop
     // Turkish to English Param Mapping
     const paramCategorySlug = (resolvedParams.kategori || resolvedParams.category) as string | undefined;
     const paramBrandSlug = (resolvedParams.marka || resolvedParams.brand) as string | undefined;
-    const paramModelId = (resolvedParams.model) as string | undefined; // Model ID remains
 
     const city = (resolvedParams.sehir || resolvedParams.city) as string;
     const district = (resolvedParams.ilce || resolvedParams.district) as string;
@@ -233,7 +232,8 @@ export default async function DynamicListingsPage({ params, searchParams }: Prop
         metadataPromises.push(Promise.resolve([])); // features placeholder
         metadataPromises.push(Promise.resolve([])); // attachments placeholder
     } else {
-        if (resolvedBrandId) metadataPromises.push(getModelsByBrand(resolvedBrandId, resolvedCategoryId));
+        // Fetch models by brand only (brand_id); category_id filter omitted so model list always populates when brand is selected
+        if (resolvedBrandId) metadataPromises.push(getModelsByBrand(resolvedBrandId, null));
         else metadataPromises.push(Promise.resolve([]));
 
         if (resolvedCategoryId) {
@@ -249,6 +249,35 @@ export default async function DynamicListingsPage({ params, searchParams }: Prop
     models = fetchedModels;
     catFeatures = fetchedFeatures;
     catAttachments = fetchedAttachments;
+
+    // Model: URL always has string (slug, e.g. "120g"). Resolve to model ID only; never pass URL string to RPC.
+    const paramModelFromUrl = Array.isArray(resolvedParams.model)
+        ? (resolvedParams.model[0] as string | undefined)
+        : (resolvedParams.model as string | undefined);
+    const paramModelRaw = (paramModelFromUrl ?? "").trim() || undefined;
+    let resolvedModelId: string | null = null;
+    if (paramModelRaw && fetchedModels.length > 0) {
+        const isNumericId = /^\d+$/.test(paramModelRaw);
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(paramModelRaw);
+        if (isNumericId || isUuid) {
+            const byId = fetchedModels.find((m: any) => m.id?.toString() === paramModelRaw);
+            if (byId) resolvedModelId = byId.id?.toString() ?? null;
+        } else {
+            const modelSlug = slugify(paramModelRaw);
+            const slugNorm = (s: string) => (s || "").replace(/-/g, "");
+            const matched = fetchedModels.find((m: any) => {
+                const name = (m?.name ?? "").trim();
+                const nameSlug = slugify(name);
+                return (
+                    nameSlug === modelSlug ||
+                    slugNorm(nameSlug) === slugNorm(modelSlug) ||
+                    name === paramModelRaw ||
+                    slugify(name) === modelSlug
+                );
+            });
+            if (matched) resolvedModelId = matched.id?.toString() ?? null;
+        }
+    }
 
     // Resolve Feature/Attachment Slugs to IDs
     // Features
@@ -274,10 +303,11 @@ export default async function DynamicListingsPage({ params, searchParams }: Prop
         }).filter((id): id is string => id !== null);
     }
 
+    // filters.model must be resolved model ID only (never URL string/slug). RPC expects ID.
     const filters = {
         category: resolvedCategoryId,
         brand: resolvedBrandId,
-        model: paramModelId,
+        model: resolvedModelId ?? undefined,
         city: city,
         district: district,
         priceRange: [priceMin, priceMax] as [number | null, number | null],

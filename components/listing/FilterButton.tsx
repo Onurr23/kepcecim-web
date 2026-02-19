@@ -17,7 +17,11 @@ export default function FilterButton({
   return (
     <div className="hidden lg:block">
       <button
-        onClick={handleApply}
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          handleApply();
+        }}
         className={cn(
           "w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all",
           "bg-orange-600 text-black hover:bg-orange-500 border border-orange-500"

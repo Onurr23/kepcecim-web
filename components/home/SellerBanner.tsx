@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { ArrowRight, CalendarClock, Settings, Store, Tractor, Wrench } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import AppRedirectOverlay from "@/components/ui/AppRedirectOverlay";
+import { useAppModal } from "@/contexts/AppModalContext";
 
 export default function SellerBanner() {
-    const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+    const { openModal } = useAppModal();
     return (
         <section className="w-full bg-neutral-900 border-t border-white/10">
 
@@ -61,7 +60,7 @@ export default function SellerBanner() {
                         </p>
 
                         <button
-                            onClick={() => setIsOverlayOpen(true)}
+                            onClick={() => openModal("general")}
                             className={cn(
                                 "group flex items-center gap-4 rounded-xl px-10 py-5",
                                 "bg-white text-black text-lg font-black tracking-wide",
@@ -136,11 +135,6 @@ export default function SellerBanner() {
                 </div>
             </div>
 
-            <AppRedirectOverlay
-                isOpen={isOverlayOpen}
-                onClose={() => setIsOverlayOpen(false)}
-                triggerType="general"
-            />
         </section>
     );
 }

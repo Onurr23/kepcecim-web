@@ -39,6 +39,15 @@ function storeToSellerProfile(store: Store): {
   const location = [store.city, store.district]
     .filter(Boolean)
     .join(", ") || "Türkiye";
+  const rawAddress = store.address;
+  let address: string | undefined;
+  if (typeof rawAddress === "string") {
+    address = rawAddress || undefined;
+  } else if (rawAddress && typeof rawAddress === "object") {
+    address = (rawAddress as { fullAddress?: string }).fullAddress || undefined;
+  } else {
+    address = undefined;
+  }
   return {
     id: store.id,
     type: "corporate",
@@ -48,7 +57,7 @@ function storeToSellerProfile(store: Store): {
     memberSince: `${store.year} yılından beri`,
     slogan: store.description || undefined,
     phone: "",
-    address: store.address || undefined,
+    address,
     location,
   };
 }
@@ -116,6 +125,12 @@ export default async function StoreProfilePage({ params }: PageProps) {
 
   const baseUrl = getBaseUrl();
   const storeUrl = `${baseUrl}/galeri/${slug}`;
+  const addressStr =
+    typeof store.address === "string"
+      ? store.address
+      : store.address && typeof store.address === "object"
+        ? (store.address as { fullAddress?: string }).fullAddress
+        : undefined;
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -123,8 +138,8 @@ export default async function StoreProfilePage({ params }: PageProps) {
     url: storeUrl,
     description: store.description || `${store.name} - İş makinesi galerisi`,
     image: getStorageUrl(store.logoUrl) || undefined,
-    address: store.address
-      ? { "@type": "PostalAddress", streetAddress: store.address }
+    address: addressStr
+      ? { "@type": "PostalAddress", streetAddress: addressStr }
       : undefined,
   };
 

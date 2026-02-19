@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope, Oswald, Roboto } from "next/font/google";
 import "./globals.css";
 import SmartAppBanner from "@/components/layout/SmartAppBanner";
+import { AppModalProvider } from "@/contexts/AppModalContext";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -62,8 +63,10 @@ export default function RootLayout({
   return (
     <html lang="tr">
       <body className={`${manrope.variable} ${oswald.variable} ${roboto.variable} font-sans antialiased`} suppressHydrationWarning>
-        <SmartAppBanner />
-        {children}
+        <AppModalProvider>
+          <SmartAppBanner />
+          {children}
+        </AppModalProvider>
       </body>
     </html>
   );

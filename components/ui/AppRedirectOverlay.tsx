@@ -5,10 +5,10 @@ import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, ShieldCheck, BellRing, MessageSquare, Phone, LucideIcon } from "lucide-react";
-import Image from "next/image"; // For QR code and other images
-
-// Use existing utils or simple fallback
+import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { AppStoreQR } from "@/components/AppStoreQR";
+import { APP_STORE_URL_IOS, APP_STORE_URL_ANDROID } from "@/constants/appStore";
 
 // --- Types ---
 export type TriggerType = 'contact' | 'favorite' | 'header' | 'general';
@@ -109,57 +109,50 @@ export default function AppRedirectOverlay({ isOpen, onClose, triggerType }: App
                         className="fixed inset-0 z-[9998] bg-black/80 backdrop-blur-sm transition-opacity"
                     />
 
-                    {/* Desktop Modal (md+) */}
+                    {/* Desktop Modal (md+) - theme compatible */}
                     <div className="fixed inset-0 z-[9999] hidden items-center justify-center p-4 md:flex pointer-events-none">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="pointer-events-auto relative w-full max-w-2xl overflow-hidden rounded-2xl border border-orange-500/30 bg-neutral-900/95 shadow-[0_0_50px_rgba(249,115,22,0.15)]"
+                            onClick={(e) => e.stopPropagation()}
+                            className="pointer-events-auto relative w-full max-w-2xl overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 shadow-xl"
                         >
                             {/* Close Button */}
                             <button
                                 onClick={onClose}
                                 className="absolute right-4 top-4 z-20 rounded-full bg-white/5 p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+                                aria-label="Kapat"
                             >
                                 <X size={20} />
                             </button>
 
                             <div className="flex flex-row p-8 gap-8">
-                                {/* Left: QR Code */}
-                                <div className="flex w-64 shrink-0 flex-col items-center justify-center rounded-xl bg-white p-6">
-                                    <div className="relative aspect-square w-full">
-                                        {/* Placeholder for QR Code - typically you'd generate this or use a static image */}
-                                        <Image
-                                            src="/images/kepcecim-qr.png" // Ensure this image exists, or use a placeholder
-                                            alt="QR Code"
-                                            width={200}
-                                            height={200}
-                                            className="h-full w-full object-contain"
-                                        />
-                                    </div>
-                                    <p className="mt-4 text-center text-sm font-bold text-neutral-900">
-                                        TELEFONDAN TARA
+                                {/* Left: QR Codes - dark panel, theme consistent */}
+                                <div className="flex w-64 shrink-0 flex-col items-center justify-center rounded-xl bg-white/[0.04] border border-white/10 p-6">
+                                    <AppStoreQR platform="both" size={100} showLabels={true} className="gap-5" labelClassName="text-gray-400" variant="card" />
+                                    <p className="mt-4 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
+                                        Telefondan tara
                                     </p>
                                 </div>
 
                                 {/* Right: Content */}
                                 <div className="flex flex-1 flex-col justify-center">
-                                    <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-500/10 shadow-[0_0_20px_rgba(249,115,22,0.2)]">
+                                    <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-white/5 border border-white/10">
                                         {content.icon === "logo" ? (
-                                            <Image src="/logo-icon.png" width={32} height={32} alt="Logo" className="h-8 w-8 object-contain" />
+                                            <Image src="/logo-icon.png" width={28} height={28} alt="Logo" className="h-7 w-7 object-contain" />
                                         ) : (
                                             (() => {
                                                 const Icon = content.icon as LucideIcon;
-                                                return <Icon className="h-8 w-8 text-orange-500" />;
+                                                return <Icon className="h-7 w-7 text-orange-500" />;
                                             })()
                                         )}
                                     </div>
 
-                                    <h2 className="mb-3 text-2xl font-bold text-white">
+                                    <h2 className="mb-3 text-xl font-bold text-white">
                                         {content.title}
                                     </h2>
-                                    <p className="mb-8 text-neutral-400 leading-relaxed">
+                                    <p className="mb-6 text-sm text-neutral-400 leading-relaxed">
                                         {content.body}
                                     </p>
 
@@ -187,7 +180,7 @@ export default function AppRedirectOverlay({ isOpen, onClose, triggerType }: App
                                     onClose();
                                 }
                             }}
-                            className="pointer-events-auto relative w-full rounded-t-3xl border-t border-white/10 bg-neutral-900 p-6 pb-safe pt-2 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
+                            className="pointer-events-auto relative w-full rounded-t-3xl border-t border-white/10 bg-neutral-900 p-6 pb-safe pt-2 shadow-xl"
                         >
                             {/* Pull Handle */}
                             <div className="mx-auto mb-6 h-1.5 w-12 rounded-full bg-white/20" />
@@ -201,7 +194,7 @@ export default function AppRedirectOverlay({ isOpen, onClose, triggerType }: App
                             </button>
 
                             <div className="flex flex-col items-center text-center">
-                                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-500/10 shadow-[0_0_20px_rgba(249,115,22,0.2)]">
+                                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-white/5 border border-white/10">
                                     {content.icon === "logo" ? (
                                         <Image src="/logo-icon.png" width={32} height={32} alt="Logo" className="h-8 w-8 object-contain" />
                                     ) : (
@@ -237,10 +230,13 @@ export default function AppRedirectOverlay({ isOpen, onClose, triggerType }: App
 
 function DesktopStoreButton({ platform }: { platform: 'ios' | 'android' }) {
     const isIOS = platform === 'ios';
+    const href = isIOS ? APP_STORE_URL_IOS : APP_STORE_URL_ANDROID;
     return (
         <a
-            href="#"
-            className="flex flex-1 items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 py-3 transition-colors hover:bg-white/10 hover:border-white/20"
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-1 items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 py-3 transition-colors hover:bg-white/10 hover:border-white/20 text-white"
         >
             {isIOS ? (
                 <svg className="h-6 w-6 fill-current text-white" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.5 1.3 0 2.5.87 3.29.87.78 0 2.26-1.07 3.93-.91 1.32.09 2.38.57 3.12 1.58-2.73 1.57-2.31 5.34.69 7.07zm-4.61-12.2c.71-1.02 1.23-2.49.92-3.8 1.27.08 2.53.86 3.09 2.14-1.29.98-2.88 1.94-4.01 1.66z" /></svg>
@@ -257,9 +253,12 @@ function DesktopStoreButton({ platform }: { platform: 'ios' | 'android' }) {
 
 function MobileStoreButton({ platform }: { platform: 'ios' | 'android' }) {
     const isIOS = platform === 'ios';
+    const href = isIOS ? APP_STORE_URL_IOS : APP_STORE_URL_ANDROID;
     return (
         <a
-            href="#"
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center justify-center gap-3 rounded-xl bg-orange-600 py-4 font-bold text-white transition-transform active:scale-95 shadow-lg shadow-orange-600/20"
         >
             {isIOS ? (

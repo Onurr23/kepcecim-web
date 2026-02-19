@@ -1,0 +1,12 @@
+[
+    {
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.kepcecim.app",
+        "sha256_cert_fingerprints": [
+          "11:86:E5:B9:DC:50:07:F4:FE:29:52:E2:B0:46:F8:E4:AE:A3:AD:8D:21:A2:0E:06:DC:03:E1:EC:17:C8:19:A5"
+        ]
+      }
+    }
+  ]

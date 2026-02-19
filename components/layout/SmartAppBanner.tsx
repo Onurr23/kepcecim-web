@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { APP_STORE_URL_IOS, APP_STORE_URL_ANDROID } from "@/constants/appStore";
 
 export default function SmartAppBanner() {
     const [isVisible, setIsVisible] = useState(false);
@@ -17,15 +18,12 @@ export default function SmartAppBanner() {
         // 2. OS Detection
         const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
 
-        // Placeholder URLs
-        const IOS_URL = "https://apps.apple.com/tr/app/kepcecim/idYOUR_ID";
-        const ANDROID_URL = "https://play.google.com/store/apps/details?id=com.kepcecim.android";
-        const FALLBACK_URL = ANDROID_URL; // Default to Android or a landing page
+        const FALLBACK_URL = APP_STORE_URL_ANDROID;
 
         if (/iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream) {
-            setStoreUrl(IOS_URL);
+            setStoreUrl(APP_STORE_URL_IOS);
         } else if (/android/i.test(userAgent)) {
-            setStoreUrl(ANDROID_URL);
+            setStoreUrl(APP_STORE_URL_ANDROID);
         } else {
             // If detection fails or desktop (though hidden via CSS), set fallback
             setStoreUrl(FALLBACK_URL);

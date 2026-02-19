@@ -93,6 +93,10 @@ function ListingsContent({
     const [allCities] = useState(getAllCities());
     const [isSortOpen, setIsSortOpen] = useState(false);
 
+    // Always use latest filters when applying (avoids stale closure)
+    const filtersRef = useRef(filters);
+    filtersRef.current = filters;
+
     // Pagination
     const page = Number(searchParams.get("page")) || 1;
     const ITEMS_PER_PAGE = 20;
@@ -102,8 +106,8 @@ function ListingsContent({
 
     // --- URL SYNC LOGIC ---
 
-    const serializeFiltersToParams = (filtersToApply: FilterState) => {
-        const params = new URLSearchParams(searchParams.toString());
+    const serializeFiltersToParams = (filtersToApply: FilterState, fromEmpty = false) => {
+        const params = fromEmpty ? new URLSearchParams() : new URLSearchParams(searchParams.toString());
 
         // Helper to set/delete
         const setOrDelete = (key: string, value: string | null) => {
@@ -120,7 +124,9 @@ function ListingsContent({
         setOrDelete("marka", activeBrand ? getSlug(activeBrand) : null);
         params.delete("brand");
 
-        setOrDelete("model", filtersToApply.model); // Model usually ID, but maybe we want name? Prompt says "brand, category" specifically. Model ID is fine usually, but prompt asked for "Structure in "İlanlar" page...". If we can mapped model name, better. But Model Names can be duplicates across brands. ID is safer. Staying with ID for Model unless requested. Prompt: "Standart Kazı Kovası -> ...".
+        // Use model name slug in URL for SEO (e.g. model=320d instead of model=uuid)
+        const activeModel = availableModels.find((m: any) => m.id?.toString() === filtersToApply.model);
+        setOrDelete("model", activeModel ? slugify(activeModel.name) : (filtersToApply.model || null));
 
         setOrDelete("sehir", filtersToApply.city);
         params.delete("city");
@@ -227,20 +233,16 @@ function ListingsContent({
     };
 
     const applyFiltersToUrl = (filtersToApply: FilterState) => {
-        const params = serializeFiltersToParams(filtersToApply);
+        const params = serializeFiltersToParams(filtersToApply, true);
         params.delete("page"); // Reset page
-
         const newQuery = params.toString();
-        // Only push if changed
-        if (newQuery !== searchParams.toString()) {
-            startTransition(() => {
-                router.push(`?${newQuery}`);
-            });
-        }
+        startTransition(() => {
+            router.push(newQuery ? `?${newQuery}` : window.location.pathname);
+        });
     };
 
     const handleApply = () => {
-        applyFiltersToUrl(filters);
+        applyFiltersToUrl(filtersRef.current);
     };
 
     // Auto-apply logic for Category, Brand, and Model
@@ -288,7 +290,14 @@ function ListingsContent({
         }
 
         const pModel = searchParams.get("model");
-        if (pModel && pModel !== filters.model) updateFilter("model", pModel);
+        if (pModel != null) {
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pModel);
+            const modelSlug = slugify(pModel);
+            const resolvedModelId = isUuid
+                ? pModel
+                : availableModels.find((m: any) => getSlug(m.name) === modelSlug)?.id?.toString() ?? pModel;
+            if (resolvedModelId !== filters.model) updateFilter("model", resolvedModelId);
+        }
 
         const hMin = searchParams.get("saat_min") || searchParams.get("hours_min");
         const hMax = searchParams.get("saat_max") || searchParams.get("hours_max");
@@ -360,7 +369,7 @@ function ListingsContent({
 
         // ... Check other dynamic fields if critical
 
-    }, [searchParams, categoryFeatures, categoryAttachments]); // Added dependencies for lookups
+    }, [searchParams, categoryFeatures, categoryAttachments, availableModels]); // availableModels for slug->id resolution
 
     // Link Builder for Tabs (preserves other params)
     // Link Builder for Tabs (preserves other params)
@@ -386,12 +395,16 @@ function ListingsContent({
         const params = new URLSearchParams(searchParams);
 
         if (key === 'category') {
+            params.delete("kategori");
             params.delete("category");
             updateFilter('category', null); // Sync draft
         }
         else if (key === 'brand') {
+            params.delete("marka");
             params.delete("brand");
             updateFilter('brand', null);
+            params.delete("model"); // model depends on brand
+            updateFilter('model', null);
         }
         else if (key === 'model') {
             params.delete("model");
@@ -524,12 +537,31 @@ function ListingsContent({
         return new Intl.NumberFormat("tr-TR").format(val);
     };
 
-    // Pending UI
-    const currentParamsNoPage = new URLSearchParams(searchParams);
-    currentParamsNoPage.delete("page");
-    const pendingParams = serializeFiltersToParams(filters);
-    pendingParams.delete("page");
-    const hasPendingChanges = currentParamsNoPage.toString() !== pendingParams.toString();
+    // Pending UI: build "target" params from draft only (empty base) and compare to current URL
+    const currentParamsNoPage = useMemo(() => {
+        const p = new URLSearchParams(searchParams);
+        p.delete("page");
+        return p;
+    }, [searchParams]);
+    const pendingParams = useMemo(() => {
+        const p = serializeFiltersToParams(filters, true);
+        p.delete("page");
+        return p;
+    }, [filters, availableBrands, availableModels, categories, categoryFeatures, categoryAttachments]);
+    const hasPendingChanges = useMemo(() => {
+        if (currentParamsNoPage.toString() === pendingParams.toString()) return false;
+        const cur = currentParamsNoPage.toString();
+        const pen = pendingParams.toString();
+        return cur !== pen;
+    }, [currentParamsNoPage, pendingParams]);
+    const pendingCount = useMemo(() => {
+        let n = 0;
+        const allKeys = new Set([...currentParamsNoPage.keys(), ...pendingParams.keys()]);
+        allKeys.forEach((k) => {
+            if (currentParamsNoPage.get(k) !== pendingParams.get(k)) n++;
+        });
+        return n;
+    }, [currentParamsNoPage, pendingParams]);
 
     // Note: We use existing 'counts' logic, but using props `initialCounts`
     const counts = initialCounts;
@@ -558,16 +590,7 @@ function ListingsContent({
                                 isTireConditionGroup={isTireConditionGroup}
                                 isPart={activeTab === 'part'}
                                 hasPendingChanges={hasPendingChanges}
-                                pendingCount={(() => {
-                                    let count = 0;
-                                    const p = pendingParams;
-                                    const c = currentParamsNoPage;
-                                    const allKeys = new Set([...Array.from(p.keys()), ...Array.from(c.keys())]);
-                                    allKeys.forEach(k => {
-                                        if (p.get(k) !== c.get(k)) count++;
-                                    });
-                                    return count;
-                                })()}
+                                pendingCount={pendingCount}
                                 features={categoryFeatures}
                                 attachments={categoryAttachments}
                             />
@@ -576,16 +599,7 @@ function ListingsContent({
                             <FilterButton
                                 hasPendingChanges={hasPendingChanges}
                                 handleApply={handleApply}
-                                pendingCount={(() => {
-                                    let count = 0;
-                                    const p = pendingParams;
-                                    const c = currentParamsNoPage;
-                                    const allKeys = new Set([...Array.from(p.keys()), ...Array.from(c.keys())]);
-                                    allKeys.forEach(k => {
-                                        if (p.get(k) !== c.get(k)) count++;
-                                    });
-                                    return count;
-                                })()}
+                                pendingCount={pendingCount}
                             />
                         </div>
                     </aside>
