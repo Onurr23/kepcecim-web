@@ -34,8 +34,8 @@ function buildSearchPartsRpcParams(
         compatibleModels?: Array<string | { model_id: string }> | null;
         city?: string | null;
         district?: string | null;
-        priceRange?: [number | null, number | null] | [number?, number?];
-        productionYearRange?: [number | null, number | null] | [number?, number?];
+        priceRange?: [number | string | null, number | string | null] | [number | string?, number | string?];
+        productionYearRange?: [number | string | null, number | string | null] | [number | string?, number | string?];
         inStockOnly?: boolean;
         sort?: string | null;
     },
