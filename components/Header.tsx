@@ -53,12 +53,12 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => openModal("header")}
+          <Link
+            href="/indir"
             className="hidden rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white/90 transition hover:bg-white/10 hover:text-white lg:block"
           >
             Uygulamayı İndir
-          </button>
+          </Link>
 
           <button
             onClick={() => openModal("header")}

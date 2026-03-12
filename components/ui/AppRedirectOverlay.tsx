@@ -4,14 +4,14 @@ import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, ShieldCheck, BellRing, MessageSquare, Phone, LucideIcon } from "lucide-react";
+import { X, ShieldCheck, MessageSquare, LucideIcon } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { AppStoreQR } from "@/components/AppStoreQR";
 import { APP_STORE_URL_IOS, APP_STORE_URL_ANDROID } from "@/constants/appStore";
 
 // --- Types ---
-export type TriggerType = 'contact' | 'favorite' | 'header' | 'general';
+export type TriggerType = 'contact' | 'header' | 'general';
 
 interface AppRedirectOverlayProps {
     isOpen: boolean;
@@ -34,12 +34,6 @@ const getContent = (type: TriggerType): ContentConfig => {
                 title: "Satıcıyla Güvenli İletişim Kur",
                 body: "İlan sahibiyle anlık mesajlaşmak, arama yapmak ve pazarlık sürecini yönetmek için uygulamayı kullanın.",
                 icon: MessageSquare // or Phone, representing communication
-            };
-        case 'favorite':
-            return {
-                title: "İlanı Kaybetme!",
-                body: "Bu makineyi favorilerine eklemek, fiyat düştüğünde bildirim almak için uygulamaya geçiş yap.",
-                icon: BellRing // Heart would be better but using BellRing as per previous context or Heart if available
             };
         case 'header':
             return {
@@ -138,9 +132,9 @@ export default function AppRedirectOverlay({ isOpen, onClose, triggerType }: App
 
                                 {/* Right: Content */}
                                 <div className="flex flex-1 flex-col justify-center">
-                                    <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-white/5 border border-white/10">
+                                    <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-white/5 border border-white/10 overflow-hidden">
                                         {content.icon === "logo" ? (
-                                            <Image src="/logo-icon.png" width={28} height={28} alt="Logo" className="h-7 w-7 object-contain" />
+                                            <Image src="/icon-512x512.png" width={56} height={56} alt="Kepçecim" className="h-full w-full object-contain" />
                                         ) : (
                                             (() => {
                                                 const Icon = content.icon as LucideIcon;
@@ -194,9 +188,9 @@ export default function AppRedirectOverlay({ isOpen, onClose, triggerType }: App
                             </button>
 
                             <div className="flex flex-col items-center text-center">
-                                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-white/5 border border-white/10">
+                                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-white/5 border border-white/10 overflow-hidden">
                                     {content.icon === "logo" ? (
-                                        <Image src="/logo-icon.png" width={32} height={32} alt="Logo" className="h-8 w-8 object-contain" />
+                                        <Image src="/icon-512x512.png" width={56} height={56} alt="Kepçecim" className="h-full w-full object-contain" />
                                     ) : (
                                         (() => {
                                             const Icon = content.icon as LucideIcon;

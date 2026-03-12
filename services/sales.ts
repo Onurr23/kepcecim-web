@@ -3,7 +3,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { getTruckBrandIdByName } from './brands';
 
-function mapTireCondition(condition: string | null): number | null {
+function mapSubTypeCondition(condition: string | null): number | null {
     if (!condition) return null;
     if (condition.includes('100')) return 100;
     if (condition.includes('75')) return 75;
@@ -87,7 +87,7 @@ export async function searchSalesMachines(filters: any, page: number = 1, limit:
         in_wheel_count: filters.wheelCount || null,
         in_side_shifter: filters.sideShifter !== undefined && filters.sideShifter !== null ? filters.sideShifter : null,
 
-        in_tire_condition_min: mapTireCondition(filters.tireCondition),
+        in_sub_type_condition_min: mapSubTypeCondition(filters.subTypeCondition),
 
         page_limit: limit,
         page_offset: (page - 1) * limit
@@ -108,37 +108,15 @@ export async function getSalesMachineCount(filters: any) {
 
     let query = supabase.from('sales_machines').select('*', { count: 'exact', head: true });
 
-    if (filters.query) query = query.textSearch('searchable_text', filters.query);
-    if (filters.category) query = query.eq('category', filters.category);
-    if (filters.brand) query = query.eq('brand', filters.brand);
-    const modelId = toModelIdOnly(filters.model);
-    if (modelId) query = query.eq('model', modelId);
-
-    if (filters.city) query = query.contains('location', { city: filters.city });
-    if (filters.district) query = query.contains('location', { district: filters.district });
-
-    if (filters.priceRange?.[0]) query = query.gte('price', filters.priceRange[0]);
-    if (filters.priceRange?.[1]) query = query.lte('price', filters.priceRange[1]);
-
-    if (filters.yearRange?.[0]) query = query.gte('year', filters.yearRange[0]);
-    if (filters.yearRange?.[1]) query = query.lte('year', filters.yearRange[1]);
-
-    if (filters.hoursRange?.[0]) query = query.gte('hours', filters.hoursRange[0]);
-    if (filters.hoursRange?.[1]) query = query.lte('hours', filters.hoursRange[1]);
-
-    if (filters.machineStatus === 'Sıfır') query = query.eq('condition', 'Sıfır'); // Assuming 'condition' column or mapped? 
-    // If usage_type maps to condition column mostly. Re-checking usage_type logic.
-    // RPC used in_usage_type. Table likely has 'usage_type' or 'condition'. 
-    // I'll guess 'usage_type' or 'condition'. 'condition' is common.
-    // Wait, the mapTireCondition is unrelated.
-    // If I am unsure of column, I might skip or try 'usage_type'.
-    // I'll use `usage_type` assuming column name matches RPC param suffix often.
-    if (filters.machineStatus) query = query.eq('usage_type', filters.machineStatus);
+    // Tab başlıklarındaki toplamlar için sadece arama terimini dikkate alıyoruz.
+    if (filters.query) {
+        query = query.textSearch('searchable_text', filters.query);
+    }
 
     const { count, error } = await query;
 
     if (error) {
-        console.error("Error fetching sales count:", error);
+        console.warn("Error fetching sales count:", error);
         return 0;
     }
     return count || 0;

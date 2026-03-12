@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { getDistrictsForCity } from "@/utils/cityDistricts";
 import { fetchModelsByBrand } from "@/app/actions/listings";
@@ -19,11 +20,12 @@ export interface FilterState {
     // New Standard Filters
     machineStatus?: string | null; // Sıfır / İkinci El
     condition?: string | null; // Mükemmel, İyi, Orta
+    availability?: string | null; // Kiralık: 'true' | 'false' | 'all'
 
     // Dynamic / Category Specific
     sub_type?: string | null; // For Forklift Type, Excavator SubType (Paletli/Lastikli), etc.
     class?: string | null; // Excavator/Loder Class (Standart/Mini)
-    tireCondition?: string | null; // Loder/Backhoe
+    subTypeCondition?: string | null; // Ekskavatör, Bekoloder, Loder, Dozer, Greyder, Telehandler, Forklift (Lastikli)
 
     // Crane Specific
     craneType?: string | null;
@@ -44,7 +46,9 @@ export interface FilterState {
 
     // Parts Specific
     partSubCategory?: string | null;
-    compatibleModels: string[]; // List of model names
+    compatibleModels: string[]; // model_id list for API
+    productionYearRange?: [number | null, number | null];
+    inStockOnly?: boolean;
 }
 
 export const initialFilters: FilterState = {
@@ -57,11 +61,15 @@ export const initialFilters: FilterState = {
     yearRange: [null, null],
     hoursRange: [null, null],
     sort: 'created_at_desc',
+    query: null,
     machineStatus: null,
     condition: null,
     features: [],
     attachments: [],
-    compatibleModels: []
+    compatibleModels: [],
+    partSubCategory: null,
+    productionYearRange: [null, null],
+    inStockOnly: false,
 };
 
 export function useListingFilters(
@@ -86,32 +94,31 @@ export function useListingFilters(
     const [brands, setBrands] = useState<any[]>(initialBrands || []);
 
     // Computed Options
-    // Computed Options
     const [availableBrands, setAvailableBrands] = useState<any[]>(initialBrands || []);
-    const [availableModels, setAvailableModels] = useState<any[]>(initialModels || []);
     const [districts, setDistricts] = useState<string[]>([]);
     const [categoryFeatures, setCategoryFeatures] = useState<any[]>(initialFeatures || []);
     const [categoryAttachments, setCategoryAttachments] = useState<any[]>(initialAttachments || []);
 
-    // Sync Props to State (Server-Driven Updates)
-    useEffect(() => {
-        setAvailableModels(initialModels ?? []);
-    }, [initialModels]);
+    // Models by brand: fetch via React Query and merge with initialModels when selected model is in URL
+    const { data: modelsFromApi } = useQuery({
+        queryKey: ["modelsByBrand", filters.brand],
+        queryFn: () => fetchModelsByBrand(filters.brand!),
+        enabled: !!filters.brand,
+    });
 
-    // When brand is selected, fetch models by brand (so model list appears without needing to click Apply)
-    useEffect(() => {
-        if (!filters.brand) {
-            setAvailableModels([]);
-            return;
+    const availableModels = useMemo(() => {
+        if (activeTab === 'part') {
+            return initialModels ?? [];
         }
-        let cancelled = false;
-        fetchModelsByBrand(filters.brand).then((data) => {
-            if (!cancelled) setAvailableModels(data ?? []);
-        });
-        return () => {
-            cancelled = true;
-        };
-    }, [filters.brand]);
+        if (!filters.brand) return initialModels ?? [];
+        let list = modelsFromApi ?? [];
+        const selectedModelId = filters.model;
+        if (selectedModelId && !list.some((m: any) => m.id?.toString() === selectedModelId) && (initialModels?.length ?? 0) > 0) {
+            const fromInitial = initialModels?.find((m: any) => m.id?.toString() === selectedModelId);
+            if (fromInitial) list = [fromInitial, ...list];
+        }
+        return list;
+    }, [activeTab, filters.brand, filters.model, modelsFromApi, initialModels]);
 
     useEffect(() => {
         if (initialFeatures) setCategoryFeatures(initialFeatures);
@@ -130,27 +137,74 @@ export function useListingFilters(
         setAvailableBrands(initialBrands || []);
     }, [initialBrands]);
 
-    // Sync filter state from server when URL/initialFilterOverrides change (e.g. after navigation)
+    // Sync full filter state from server when URL/initialFilterOverrides change (direct URL open or client navigation)
+    // Ensures opening a filtered URL (e.g. bookmark, shared link) applies all filters correctly
     useEffect(() => {
-        if (!initialFilterOverrides) return;
+        if (!initialFilterOverrides || typeof initialFilterOverrides !== "object") return;
         setFilters((prev) => {
             let changed = false;
             const next = { ...prev };
-            if (initialFilterOverrides.category !== undefined && next.category !== (initialFilterOverrides.category ?? null)) {
-                next.category = initialFilterOverrides.category ?? null;
-                changed = true;
-            }
-            if (initialFilterOverrides.brand !== undefined && next.brand !== (initialFilterOverrides.brand ?? null)) {
-                next.brand = initialFilterOverrides.brand ?? null;
-                changed = true;
-            }
-            if (initialFilterOverrides.model !== undefined && next.model !== (initialFilterOverrides.model ?? null)) {
-                next.model = initialFilterOverrides.model ?? null;
-                changed = true;
+            const keys: (keyof FilterState)[] = [
+                "category", "brand", "model", "city", "district",
+                "priceRange", "yearRange", "hoursRange", "sort", "query",
+                "machineStatus", "condition", "availability", "sub_type", "class", "subTypeCondition",
+                "craneType", "chassisType", "truckBrand", "mastType", "tireType",
+                "liftingCapacity", "liftingHeight", "sideShifter", "wheelCount",
+                "features", "attachments", "partSubCategory", "compatibleModels",
+                "productionYearRange", "inStockOnly"
+            ];
+            for (const key of keys) {
+                const value = initialFilterOverrides[key];
+                if (value === undefined) continue;
+                const normalized = Array.isArray(value) ? [...value] : value;
+                const prevVal = prev[key];
+                const same = Array.isArray(normalized) && Array.isArray(prevVal)
+                    ? normalized.length === prevVal.length && normalized.every((v, i) => prevVal[i] === v)
+                    : prevVal === normalized;
+                if (!same) {
+                    (next as Record<string, unknown>)[key] = normalized;
+                    changed = true;
+                }
             }
             return changed ? next : prev;
         });
-    }, [initialFilterOverrides?.category, initialFilterOverrides?.brand, initialFilterOverrides?.model]);
+    }, [
+        initialFilterOverrides?.category,
+        initialFilterOverrides?.brand,
+        initialFilterOverrides?.model,
+        initialFilterOverrides?.city,
+        initialFilterOverrides?.district,
+        initialFilterOverrides?.query,
+        initialFilterOverrides?.sort,
+        initialFilterOverrides?.machineStatus,
+        initialFilterOverrides?.condition,
+        initialFilterOverrides?.sub_type,
+        initialFilterOverrides?.class,
+        initialFilterOverrides?.subTypeCondition,
+        initialFilterOverrides?.mastType,
+        initialFilterOverrides?.craneType,
+        initialFilterOverrides?.chassisType,
+        initialFilterOverrides?.truckBrand,
+        initialFilterOverrides?.tireType,
+        initialFilterOverrides?.wheelCount,
+        initialFilterOverrides?.sideShifter,
+        // Arrays: depend on stringified version so we detect real changes
+        initialFilterOverrides?.priceRange?.[0],
+        initialFilterOverrides?.priceRange?.[1],
+        initialFilterOverrides?.yearRange?.[0],
+        initialFilterOverrides?.yearRange?.[1],
+        initialFilterOverrides?.hoursRange?.[0],
+        initialFilterOverrides?.hoursRange?.[1],
+        initialFilterOverrides?.liftingCapacity?.[0],
+        initialFilterOverrides?.liftingCapacity?.[1],
+        initialFilterOverrides?.features?.length,
+        initialFilterOverrides?.attachments?.length,
+        initialFilterOverrides?.availability,
+        initialFilterOverrides?.partSubCategory,
+        initialFilterOverrides?.productionYearRange?.[0],
+        initialFilterOverrides?.productionYearRange?.[1],
+        initialFilterOverrides?.inStockOnly
+    ]);
 
     // --- Helpers to Identify Category Context ---
     const getCategoryName = useCallback(() => {
@@ -169,9 +223,9 @@ export function useListingFilters(
         return (name.includes("loder") || name.includes("yükleyici")) && !name.includes("teleskobik");
     };
 
-    const isTireConditionGroup = () => {
+    const isSubTypeConditionGroup = () => {
         const name = getCategoryName();
-        return name.includes("bekoloder") || name.includes("greyder") || name.includes("telehandler") || name.includes("teleskobik");
+        return name.includes("bekoloder") || name.includes("loder") || name.includes("dozer") || name.includes("greyder") || name.includes("telehandler") || name.includes("teleskobik") || name.includes("forklift");
     };
 
     const isCrane = () => {
@@ -234,7 +288,7 @@ export function useListingFilters(
                 next.condition = null;
                 next.sub_type = null;
                 next.class = null;
-                next.tireCondition = null;
+                next.subTypeCondition = null;
                 next.craneType = null;
                 next.chassisType = null;
                 next.truckBrand = null;
@@ -286,7 +340,7 @@ export function useListingFilters(
         // Helper Booleans
         isExcavator: isExcavator(),
         isLoader: isLoader(),
-        isTireConditionGroup: isTireConditionGroup(),
+        isSubTypeConditionGroup: isSubTypeConditionGroup(),
         isCrane: isCrane(),
         isForklift: isForklift(),
         // Raw Data Access

@@ -27,15 +27,14 @@ export async function performGlobalSearch(query: string): Promise<GlobalSearchRe
 
     const searchParams = {
         query: query,
-        page: 0, // Fetch first page
+        page: 0,
     };
 
     try {
-        // Run queries in parallel for efficiency (each returns { data, count })
         const [salesResults, rentalResults, partsResults] = await Promise.all([
             searchSalesMachines(searchParams),
             searchRentalMachines(searchParams),
-            searchParts(searchParams),
+            searchParts({ query: query.trim() || null }, 1, 20),
         ]);
 
         const salesData = Array.isArray(salesResults?.data) ? salesResults.data : [];

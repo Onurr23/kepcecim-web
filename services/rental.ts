@@ -3,7 +3,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { getTruckBrandIdByName } from './brands';
 
-function mapTireCondition(condition: string | null): number | null {
+function mapSubTypeCondition(condition: string | null): number | null {
     if (!condition) return null;
     if (condition.includes('100')) return 100;
     if (condition.includes('75')) return 75;
@@ -68,9 +68,11 @@ export async function searchRentalMachines(filters: any, page: number = 1, limit
         in_hours_min: filters.hoursRange?.[0] || null,
         in_hours_max: filters.hoursRange?.[1] || null,
 
-        // Rental Specific
-
-        in_is_available: true,
+        // Rental Specific (mobil spec: availability 'true'|'false' → boolean; yoksa gönderilmez)
+        in_is_available:
+            filters.availability === 'true' ? true
+                : filters.availability === 'false' ? false
+                    : null,
 
         in_features: filters.features?.length ? filters.features : null,
         in_attachments: filters.attachments?.length ? filters.attachments : null,
@@ -92,7 +94,7 @@ export async function searchRentalMachines(filters: any, page: number = 1, limit
         in_wheel_count: filters.wheelCount || null,
         in_side_shifter: filters.sideShifter !== undefined && filters.sideShifter !== null ? filters.sideShifter : null,
 
-        in_tire_condition_min: mapTireCondition(filters.tireCondition),
+        in_sub_type_condition_min: mapSubTypeCondition(filters.subTypeCondition),
 
         page_limit: limit,
         page_offset: (page - 1) * limit
@@ -113,43 +115,15 @@ export async function getRentalMachineCount(filters: any) {
 
     let query = supabase.from('rental_machines').select('*', { count: 'exact', head: true });
 
-    if (filters.query) query = query.textSearch('searchable_text', filters.query);
-    if (filters.category) query = query.eq('category', filters.category);
-    if (filters.brand) query = query.eq('brand', filters.brand);
-    const modelId = toModelIdOnly(filters.model);
-    if (modelId) query = query.eq('model', modelId);
-
-    if (filters.city) query = query.contains('location', { city: filters.city });
-    if (filters.district) query = query.contains('location', { district: filters.district });
-
-    if (filters.priceRange?.[0]) query = query.gte('daily_rate', filters.priceRange[0]); // Rental uses daily_rate usually? 
-    // searchRentalMachines RPC maps `in_price_min` to `daily_rate` or `price`?
-    // Usually rentals have daily_rate / monthly_rate. 
-    // I'll check `getRentalMachineById`: `pricing` JSON. `dailyRate`, `monthlyRate`.
-    // If table has flat columns, likely `daily_rate`. 
-    // If unsure, `price` is risky.
-    // However, I see `getRentalMachineById` doesn't show schema.
-    // I will check `services/rental.ts` rpc params again: `in_price_min`.
-    // Maybe I should ignore price filter for count if schema uncertain, but it makes count wrong.
-    // I'll assume `daily_rate` exists as column if `price` does not. 
-    // Or maybe `price` column exists and aggregates?
-    // Safest is to try `price` or `daily_rate`.
-    // I'll use `daily_rate` as it's more specific to rental.
-    // Wait, if `priceRange` maps to `in_price_min` in RPC, and RPC documentation says it is for daily rate?
-    // I will use `daily_rate` column assumption.
-    if (filters.priceRange?.[0]) query = query.gte('daily_rate', filters.priceRange[0]);
-    if (filters.priceRange?.[1]) query = query.lte('daily_rate', filters.priceRange[1]);
-
-    if (filters.yearRange?.[0]) query = query.gte('year', filters.yearRange[0]);
-    if (filters.yearRange?.[1]) query = query.lte('year', filters.yearRange[1]);
-
-    if (filters.hoursRange?.[0]) query = query.gte('hours', filters.hoursRange[0]);
-    if (filters.hoursRange?.[1]) query = query.lte('hours', filters.hoursRange[1]);
+    // Tab başlıklarındaki toplamlar için sadece arama terimini dikkate alıyoruz.
+    if (filters.query) {
+        query = query.textSearch('searchable_text', filters.query);
+    }
 
     const { count, error } = await query;
 
     if (error) {
-        console.error("Error fetching rental count:", error);
+        console.warn("Error fetching rental count:", error);
         return 0;
     }
     return count || 0;

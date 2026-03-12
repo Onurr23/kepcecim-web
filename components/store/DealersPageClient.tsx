@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { slugify } from "@/utils/slugify";
 import Image from "next/image";
 import Link from "next/link";
@@ -30,8 +31,6 @@ interface DealersPageClientProps {
 export default function DealersPageClient({
   initialDealers,
 }: DealersPageClientProps) {
-  const [dealers, setDealers] = useState<StoreType[]>(initialDealers);
-  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -43,28 +42,18 @@ export default function DealersPageClient({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  useEffect(() => {
-    const hasFilters = debouncedSearchQuery || (selectedCity && selectedCity !== "all");
-    if (!hasFilters) {
-      setDealers(initialDealers);
-      return;
-    }
-    async function fetchStores() {
-      setLoading(true);
-      try {
-        const data = await getStores({
-          searchQuery: debouncedSearchQuery || undefined,
-          city: selectedCity === "all" ? undefined : selectedCity || undefined,
-        });
-        setDealers(data);
-      } catch (error) {
-        console.error("Failed to fetch stores", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchStores();
-  }, [debouncedSearchQuery, selectedCity, initialDealers]);
+  const hasNoFilters = !debouncedSearchQuery && (!selectedCity || selectedCity === "all");
+  const { data: dealers = [], isLoading } = useQuery({
+    queryKey: ["stores", debouncedSearchQuery ?? "", selectedCity === "all" ? "" : selectedCity],
+    queryFn: () =>
+      getStores({
+        searchQuery: debouncedSearchQuery || undefined,
+        city: selectedCity === "all" ? undefined : selectedCity || undefined,
+      }),
+    initialData: hasNoFilters ? initialDealers : undefined,
+  });
+
+  const loading = isLoading;
 
   return (
     <div className="min-h-screen bg-black pb-20 pt-24">

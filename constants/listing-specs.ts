@@ -44,7 +44,7 @@ export const SPEC_LABEL_MAP: Record<string, string> = {
     year: 'Kamyon Yılı',
 
     // Condition & Other
-    tire_condition: 'Lastik Durumu',
+    sub_type_condition: 'Alt Tip Durumu',
     usage_type: 'Kullanım Tipi',
     shipping: 'Gönderim',
     warranty: 'Garanti',
@@ -53,6 +53,15 @@ export const SPEC_LABEL_MAP: Record<string, string> = {
     condition: 'Kondisyon',
     operator_included: 'Operatör Durumu',
     fuel_included: 'Yakıt Durumu',
+
+    // İngilizce gelen alanlar (Türkçe karşılık)
+    transmission_type: 'Şanzıman Tipi',
+    transmission: 'Şanzıman',
+    transmissionType: 'Şanzıman Tipi',
+    fuel_type: 'Yakıt Tipi',
+    fuelType: 'Yakıt Tipi',
+    drive_type: 'Çekiş Tipi',
+    driveType: 'Çekiş Tipi',
 };
 
 export const PARTS_TERMS: Record<string, string> = {
@@ -95,9 +104,39 @@ export const TIRE_CONDITION_OPTIONS: Record<number, string> = {
 };
 
 export const SHIPPING_INFO: Record<string, string> = {
-    buyer_pays: 'Alıcı Öder',
-    seller_pays: 'Satıcı Öder',
-    fixed_price: 'Sabit Fiyat',
+    buyer_pays: 'Alıcı Öder (Kargo Dahil Değil)',
+    seller_pays: 'Satıcı Öder (Ücretsiz Kargo)',
+    fixed_price: 'Sabit Fiyatlı Kargo',
     free_shipping: 'Ücretsiz Kargo',
-    pickup_only: 'Sadece Elden Teslim'
+    pickup_only: 'Sadece Elden Teslim',
+    hand_delivery: 'Elden Teslim (Kargo Yok)',
 };
+
+/** Yedek parça parça durumu etiketleri (mobil ile uyumlu) */
+export const PARTS_CONDITION_LABELS: Record<string, string> = {
+    new_oem: 'Sıfır (Orijinal - OEM)',
+    new_aftermarket: 'Sıfır (Yan Sanayi - Aftermarket)',
+    used: 'Çıkma (İkinci El)',
+    refurbished: 'Yenilenmiş (Revizyonlu)',
+};
+
+/** Yedek parça garanti etiketleri (mobil ile uyumlu) */
+export const WARRANTY_LABELS: Record<string, string> = {
+    '3_months': '3 ay',
+    '6_months': '6 ay',
+    '1_year': '1 yıl',
+    '2_years': '2 yıl',
+    '3_years': '3 yıl',
+};
+
+/** Teknik özelliklerde gösterilmeyecek anahtarlar (mobil spesifikasyonu); sub_type_condition Temel Bilgiler'de gösterilir */
+export const TECHNICAL_SPEC_EXCLUDED_KEYS = [
+    'special_features',
+    'sub_type',
+    'class',
+    'truck_info',
+    'chassis_type',
+    'crane_type',
+    'tire_condition',
+    'sub_type_condition',
+] as const;

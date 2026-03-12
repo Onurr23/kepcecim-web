@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { MapPin } from "lucide-react";
@@ -44,6 +45,131 @@ interface StoreProfileClientProps {
     initialProducts?: any[];
 }
 
+function getStorageUrl(path: string) {
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://yvritvbtpntvwyispsid.supabase.co";
+    return `${baseUrl}/storage/v1/object/public/machine-images/${path}`;
+}
+
+async function fetchStoreProfileBySlug(slug: string): Promise<{ seller: SellerProfile | null; products: any[] }> {
+    const supabase = createClient();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+    let profile: any = null;
+
+    if (isUuid) {
+        const { data, error } = await supabase
+            .from("user_profiles")
+            .select("*")
+            .eq("id", slug)
+            .single();
+        if (error && error.code !== "PGRST116") {
+            console.error("Profile ID fetch error:", error);
+            return { seller: null, products: [] };
+        }
+        profile = data;
+    } else {
+        const { data: profiles, error: listError } = await supabase
+            .from("user_profiles")
+            .select("id, name, store_name, is_store");
+        if (listError) {
+            console.error("Profile list fetch error:", listError);
+            return { seller: null, products: [] };
+        }
+        const matched = profiles?.find((p) => {
+            const nameToSlug = slugify(p.is_store ? (p.store_name || "") : (p.name || ""));
+            return nameToSlug === slug;
+        });
+        if (matched) {
+            const { data, error } = await supabase
+                .from("user_profiles")
+                .select("*")
+                .eq("id", matched.id)
+                .single();
+            if (!error) profile = data;
+        } else {
+            console.warn("No profile found matching slug:", slug);
+        }
+    }
+
+    if (!profile) return { seller: null, products: [] };
+
+    let fullAddress = "";
+    let coordinates: any = null;
+    if (profile.store_address) {
+        try {
+            const addr = typeof profile.store_address === "string" ? JSON.parse(profile.store_address) : profile.store_address;
+            fullAddress = addr?.fullAddress || profile.store_address;
+            coordinates = addr?.coordinates || null;
+        } catch {
+            fullAddress = profile.store_address;
+        }
+    }
+
+    const isStore = profile.is_store;
+    const mappedSeller: SellerProfile = {
+        id: profile.id,
+        type: isStore ? "corporate" : "individual",
+        name: isStore ? (profile.store_name || profile.name) : profile.name,
+        logo: profile.avatar_url ? getStorageUrl(profile.avatar_url) : (isStore ? "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=200&h=200" : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200&h=200"),
+        coverImage: profile.store_cover_image_url ? getStorageUrl(profile.store_cover_image_url) : undefined,
+        memberSince: profile.created_at ? new Date(profile.created_at).toLocaleDateString("tr-TR", { year: "numeric", month: "long", day: "numeric" }) + " tarihinden beri" : "Yeni",
+        slogan: profile.store_description || (isStore ? "İş makineleri hakkında her şey" : ""),
+        phone: profile.public_phone || profile.phone,
+        authorizedPerson: profile.name,
+        taxNumber: "",
+        address: fullAddress,
+        location: [profile.city, profile.district].filter(Boolean).map((s) => s.trim()).join(", ") || "Türkiye",
+    };
+    (mappedSeller as any).coordinates = coordinates;
+
+    const [salesRes, rentalRes, partsRes] = await Promise.all([
+        supabase.from("sales_machines").select("*, machine_brands(name), machine_models(name)").eq("operator_id", profile.id),
+        supabase.from("rental_machines").select("*, machine_brands(name), machine_models(name)").eq("operator_id", profile.id),
+        supabase.from("parts").select("*, parts_brands(name), parts_categories(name)").eq("supplier_id", profile.id),
+    ]);
+
+    const mapItem = (item: any, listingType: "SALE" | "RENT" | "PART") => {
+        const pricing = typeof item.pricing === "string" ? JSON.parse(item.pricing) : item.pricing;
+        const loc = typeof item.location === "string" ? JSON.parse(item.location) : item.location;
+        const brandName = item.machine_brands?.name || item.parts_brands?.name || item.custom_brand_text;
+        const modelName = item.machine_models?.name || item.parts_categories?.name || "";
+
+        let priceDisplay = "Fiyat Sorunuz";
+        if (pricing) {
+            const amount = listingType === "RENT" ? pricing.dailyRate : (pricing.price || pricing.salePrice);
+            if (amount) priceDisplay = `${Number(amount).toLocaleString("tr-TR")} ${pricing.currency || "₺"}${listingType === "RENT" ? "/gün" : ""}`;
+        }
+
+        return {
+            id: item.id,
+            title: item.title || `${brandName || ""} ${modelName || ""}`.trim(),
+            subtitle: brandName ? `${brandName} ${modelName || ""}`.trim() : mappedSeller.name,
+            price: priceDisplay,
+            location: loc ? `${loc.city || ""}${loc.district ? `, ${loc.district}` : ""}` : (item.city ? `${item.city}${item.district ? `, ${item.district}` : ""}` : "Konum Belirtilmedi"),
+            image: getStorageUrl(item.images?.[0] || item.image_url),
+            type: listingType,
+            specs: {
+                year: Number(item.year || item.production_year) || 0,
+                hours: item.hours_meter ? `${item.hours_meter} Saat` : "-",
+                weight: item.operating_weight || "-",
+            },
+            machineInfo: {
+                category: item.machine_categories?.name || item.parts_categories?.name || "kategori",
+                brand: brandName,
+                model: modelName,
+            },
+        };
+    };
+
+    const allProducts: any[] = [];
+    if (salesRes.data) allProducts.push(...salesRes.data.map((i) => mapItem(i, "SALE")));
+    if (rentalRes.data) allProducts.push(...rentalRes.data.map((i) => mapItem(i, "RENT")));
+    if (partsRes.data) allProducts.push(...partsRes.data.map((i) => mapItem(i, "PART")));
+
+    return { seller: mappedSeller, products: allProducts };
+}
+
 export default function StoreProfileClient({
     initialSeller: initialSellerProp,
     initialProducts: initialProductsProp = [],
@@ -51,185 +177,19 @@ export default function StoreProfileClient({
     const params = useParams();
     const slug = params?.slug as string;
     const hasInitialData = initialSellerProp != null;
-    const [loading, setLoading] = useState(!hasInitialData);
-    const [seller, setSeller] = useState<SellerProfile | null>(initialSellerProp ?? null);
-    const [products, setProducts] = useState<any[]>(initialProductsProp ?? []);
     const [activeTab, setActiveTab] = useState("all");
 
-    useEffect(() => {
-        if (hasInitialData) {
-            setLoading(false);
-            return;
-        }
-        async function fetchData() {
-            if (!slug) return;
-            const supabase = createClient();
+    const { data, isLoading } = useQuery({
+        queryKey: ["storeProfile", slug],
+        queryFn: () => fetchStoreProfileBySlug(slug),
+        initialData: hasInitialData && initialSellerProp ? { seller: initialSellerProp, products: initialProductsProp ?? [] } : undefined,
+        enabled: !!slug,
+    });
 
-            try {
-                // 1. Determine Fetch Method (UUID vs Slug)
-                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
-                let profile = null;
+    const seller = data?.seller ?? initialSellerProp ?? null;
+    const products = data?.products ?? initialProductsProp ?? [];
 
-                if (isUuid) {
-                    // Fetch by ID directly
-                    const { data, error } = await supabase
-                        .from("user_profiles")
-                        .select("*")
-                        .eq("id", slug)
-                        .single();
-
-                    if (error && error.code !== 'PGRST116') {
-                        console.error("Profile ID fetch error:", error);
-                        setLoading(false);
-                        return;
-                    }
-                    profile = data;
-                } else {
-                    // Fetch by Slug (Manual Match)
-                    // Note: Since 'slug' column is missing in DB, we fetch all relevant fields and match in memory.
-                    // Ideally, a 'slug' column should be added to user_profiles table.
-                    const { data: profiles, error: listError } = await supabase
-                        .from("user_profiles")
-                        .select("id, name, store_name, is_store");
-
-                    if (listError) {
-                        console.error("Profile list fetch error:", listError);
-                        setLoading(false);
-                        return;
-                    }
-
-                    const matched = profiles?.find(p => {
-                        const nameToSlug = slugify(p.is_store ? (p.store_name || "") : (p.name || ""));
-                        return nameToSlug === slug;
-                    });
-
-                    if (matched) {
-                        const { data, error } = await supabase
-                            .from("user_profiles")
-                            .select("*")
-                            .eq("id", matched.id)
-                            .single();
-
-                        if (error) {
-                            console.error("Profile details fetch error:", error);
-                        } else {
-                            profile = data;
-                        }
-                    } else {
-                        console.warn("No profile found matching slug:", slug);
-                    }
-                }
-
-                if (!profile) {
-                    // Profile not found
-                    setLoading(false);
-                    return;
-                }
-
-                // Helper for storage URLs
-                const getStorageUrl = (path: string) => {
-                    if (!path) return "";
-                    if (path.startsWith('http')) return path;
-                    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://yvritvbtpntvwyispsid.supabase.co";
-                    return `${baseUrl}/storage/v1/object/public/machine-images/${path}`;
-                };
-
-                // Parse Address & Coordinates
-                let fullAddress = "";
-                let coordinates = null;
-                if (profile.store_address) {
-                    try {
-                        const addr = typeof profile.store_address === 'string'
-                            ? JSON.parse(profile.store_address)
-                            : profile.store_address;
-                        fullAddress = addr?.fullAddress || profile.store_address;
-                        coordinates = addr?.coordinates || null;
-                    } catch (e) {
-                        fullAddress = profile.store_address;
-                    }
-                }
-
-                // Map Profile
-                const isStore = profile.is_store;
-                const mappedSeller: SellerProfile = {
-                    id: profile.id,
-                    type: isStore ? "corporate" : "individual",
-                    name: isStore ? (profile.store_name || profile.name) : profile.name,
-                    logo: profile.avatar_url ? getStorageUrl(profile.avatar_url) : (isStore ? "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=200&h=200" : "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200&h=200"),
-                    coverImage: profile.store_cover_image_url ? getStorageUrl(profile.store_cover_image_url) : undefined,
-                    memberSince: profile.created_at ? new Date(profile.created_at).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }) + " tarihinden beri" : "Yeni",
-                    slogan: profile.store_description || (isStore ? "İş makineleri hakkında her şey" : ""),
-                    phone: profile.public_phone || profile.phone,
-                    authorizedPerson: profile.name,
-                    taxNumber: "",
-                    address: fullAddress,
-                    location: [profile.city, profile.district].filter(Boolean).map(s => s.trim()).join(", ") || "Türkiye",
-                };
-                setSeller(mappedSeller);
-                (mappedSeller as any).coordinates = coordinates;
-
-                // 2. Fetch Listings from 3 different tables
-                const [salesRes, rentalRes, partsRes] = await Promise.all([
-                    supabase.from("sales_machines").select("*, machine_brands(name), machine_models(name)").eq("operator_id", profile.id),
-                    supabase.from("rental_machines").select("*, machine_brands(name), machine_models(name)").eq("operator_id", profile.id),
-                    supabase.from("parts").select("*, parts_brands(name), parts_categories(name)").eq("supplier_id", profile.id)
-                ]);
-
-                const allProducts: any[] = [];
-
-                // Helper to map different listing types
-                const mapItem = (item: any, listingType: "SALE" | "RENT" | "PART") => {
-                    const pricing = typeof item.pricing === 'string' ? JSON.parse(item.pricing) : item.pricing;
-                    const loc = typeof item.location === 'string' ? JSON.parse(item.location) : item.location;
-                    const brandName = item.machine_brands?.name || item.parts_brands?.name || item.custom_brand_text;
-                    const modelName = item.machine_models?.name || item.parts_categories?.name || "";
-
-                    let priceDisplay = "Fiyat Sorunuz";
-                    if (pricing) {
-                        const amount = listingType === "RENT" ? pricing.dailyRate : (pricing.price || pricing.salePrice);
-                        if (amount) {
-                            priceDisplay = `${Number(amount).toLocaleString('tr-TR')} ${pricing.currency || '₺'}${listingType === "RENT" ? "/gün" : ""}`;
-                        }
-                    }
-
-                    return {
-                        id: item.id,
-                        title: item.title || `${brandName || ''} ${modelName || ''}`.trim(),
-                        subtitle: brandName ? `${brandName} ${modelName || ""}`.trim() : mappedSeller.name,
-                        price: priceDisplay,
-                        location: loc ? `${loc.city || ''}${loc.district ? `, ${loc.district}` : ''}` : (item.city ? `${item.city}${item.district ? `, ${item.district}` : ''}` : "Konum Belirtilmedi"),
-                        image: getStorageUrl(item.images?.[0] || item.image_url),
-                        type: listingType,
-                        specs: {
-                            year: Number(item.year || item.production_year) || 0,
-                            hours: item.hours_meter ? `${item.hours_meter} Saat` : "-",
-                            weight: item.operating_weight || "-"
-                        },
-                        machineInfo: {
-                            category: item.machine_categories?.name || item.parts_categories?.name || "kategori",
-                            brand: brandName,
-                            model: modelName
-                        }
-                    };
-                };
-
-                if (salesRes.data) allProducts.push(...salesRes.data.map(i => mapItem(i, "SALE")));
-                if (rentalRes.data) allProducts.push(...rentalRes.data.map(i => mapItem(i, "RENT")));
-                if (partsRes.data) allProducts.push(...partsRes.data.map(i => mapItem(i, "PART")));
-
-                setProducts(allProducts);
-
-            } catch (err) {
-                console.error("Error fetching seller data:", err);
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        fetchData();
-    }, [slug]);
-
-    if (loading) return <SellerProfileSkeleton />;
+    if (isLoading && !data) return <SellerProfileSkeleton />;
     if (!seller) return <div className="flex h-screen items-center justify-center bg-[#050505] text-white">Satıcı bulunamadı.</div>;
 
     // Filter Logic

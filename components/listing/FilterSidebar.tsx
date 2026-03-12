@@ -3,6 +3,7 @@ import { Search, ChevronDown, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FilterState } from "@/hooks/useListingFilters";
 import SearchableSelect from "@/components/ui/SearchableSelect";
+import { PARTS_CONDITION_LABELS } from "@/constants/listing-specs";
 
 interface FilterSidebarProps {
   filters: FilterState;
@@ -21,7 +22,7 @@ interface FilterSidebarProps {
   isExcavator: boolean;
   isLoader: boolean;
   isCrane: boolean;
-  isTireConditionGroup: boolean;
+  isSubTypeConditionGroup: boolean;
   isPart?: boolean;
   hasPendingChanges?: boolean;
   pendingCount?: number;
@@ -42,7 +43,7 @@ export default function FilterSidebar({
   isExcavator,
   isLoader,
   isCrane,
-  isTireConditionGroup,
+  isSubTypeConditionGroup,
   isPart,
   hasPendingChanges = true,
   pendingCount = 0
@@ -232,6 +233,18 @@ export default function FilterSidebar({
     return allYears;
   }, [allYears, filters.yearRange]);
 
+  const partsMinYearOptions = useMemo(() => {
+    const max = filters.productionYearRange?.[1];
+    if (max != null) return allYears.filter(y => y <= max);
+    return allYears;
+  }, [allYears, filters.productionYearRange]);
+
+  const partsMaxYearOptions = useMemo(() => {
+    const min = filters.productionYearRange?.[0];
+    if (min != null) return allYears.filter(y => y >= min);
+    return allYears;
+  }, [allYears, filters.productionYearRange]);
+
   const handleFeatureToggle = (id: string) => {
     const current = filters.features || [];
     if (current.includes(id)) {
@@ -274,11 +287,20 @@ export default function FilterSidebar({
 
         <Divider />
 
-        {/* BRAND & MODEL */}
-
-        {!isOtherMachines && (
+        {/* YEDEK PARÇA: Alt Kategori + Marka */}
+        {isPart && (
           <>
-            {/* Marka */}
+            <div className={cn("space-y-4", !filters.category && "opacity-60")}>
+              <SectionHeader title="Alt Kategori" />
+              <SearchableSelect
+                options={modelOptions}
+                value={filters.partSubCategory ?? null}
+                onChange={(val) => onFilterChange('partSubCategory', val || null)}
+                placeholder="Alt kategori seçiniz"
+                searchPlaceholder="Alt kategori ara..."
+                disabled={!filters.category}
+              />
+            </div>
             <div className="space-y-4">
               <SectionHeader title="Marka" />
               <SearchableSelect
@@ -289,28 +311,40 @@ export default function FilterSidebar({
                 searchPlaceholder="Marka ara..."
               />
             </div>
-
-            {/* Model */}
-            {!isPart && (
-              <div className={cn("space-y-4 transition-opacity", !filters.brand && "opacity-50 pointer-events-none")}>
-                <SectionHeader title="Model" />
-                <SearchableSelect
-                  options={modelOptions}
-                  value={filters.model}
-                  onChange={(val) => onFilterChange('model', val)}
-                  placeholder="Model Seçiniz"
-                  searchPlaceholder="Model ara..."
-                  disabled={!filters.brand}
-                />
-              </div>
-            )}
-
             <Divider />
           </>
         )}
 
-        {/* DYNAMIC FIELDS - GROUP A (Priority fields like Subtype/Class) */}
-        {!isOtherMachines && (
+        {/* BRAND & MODEL (Makine) */}
+        {!isPart && !isOtherMachines && (
+          <>
+            <div className="space-y-4">
+              <SectionHeader title="Marka" />
+              <SearchableSelect
+                options={brandOptions}
+                value={filters.brand}
+                onChange={(val) => onFilterChange('brand', val)}
+                placeholder="Marka Seçiniz"
+                searchPlaceholder="Marka ara..."
+              />
+            </div>
+            <div className={cn("space-y-4 transition-opacity", !filters.brand && "opacity-50 pointer-events-none")}>
+              <SectionHeader title="Model" />
+              <SearchableSelect
+                options={modelOptions}
+                value={filters.model}
+                onChange={(val) => onFilterChange('model', val)}
+                placeholder="Model Seçiniz"
+                searchPlaceholder="Model ara..."
+                disabled={!filters.brand}
+              />
+            </div>
+            <Divider />
+          </>
+        )}
+
+        {/* DYNAMIC FIELDS - GROUP A (Makine: Alt tip, Sınıf vb.) */}
+        {!isPart && !isOtherMachines && (
           <>
             {/* Ekskavatör */}
             {isExcavator && (
@@ -354,14 +388,14 @@ export default function FilterSidebar({
                     onChange={(v) => onFilterChange('class', v === filters.class ? null : v)}
                   />
                 </div>
-                {/* Tire Condition Logic */}
+                {/* Alt Tip Durumu (sub_type_condition): Lastikli seçildiğinde */}
                 {filters.sub_type === 'Lastikli' && (
                   <div className="space-y-3">
-                    <SectionHeader title="Lastik Kondisyonu" />
+                    <SectionHeader title="Alt Tip Durumu" />
                     <ChoiceChips
                       options={['%100', '%75+', '%50+', '%25+']}
-                      value={filters.tireCondition}
-                      onChange={(v) => onFilterChange('tireCondition', v === filters.tireCondition ? null : v)}
+                      value={filters.subTypeCondition}
+                      onChange={(v) => onFilterChange('subTypeCondition', v === filters.subTypeCondition ? null : v)}
                     />
                   </div>
                 )}
@@ -373,27 +407,43 @@ export default function FilterSidebar({
 
 
 
-        {/* YEAR */}
+        {/* YEAR / Üretim Yılı: Parça sekmesinde productionYearRange, makinede yearRange */}
         <div className="space-y-4">
-          <SectionHeader title="Üretim Yılı" />
+          <SectionHeader title={isPart ? "Üretim Yılı" : "Üretim Yılı"} />
           <div className="grid grid-cols-2 gap-2">
             <select
-              value={filters.yearRange[0] || ""}
-              onChange={(e) => onFilterChange('yearRange', [e.target.value ? Number(e.target.value) : null, filters.yearRange[1]])}
+              value={(isPart ? filters.productionYearRange?.[0] : filters.yearRange[0]) ?? ""}
+              onChange={(e) => {
+                const v = e.target.value ? Number(e.target.value) : null;
+                if (isPart) {
+                  onFilterChange('productionYearRange', [v, (filters.productionYearRange ?? [null, null])[1]]);
+                  onFilterChange('yearRange', [v, (filters.yearRange ?? [null, null])[1]]);
+                } else {
+                  onFilterChange('yearRange', [v, filters.yearRange[1]]);
+                }
+              }}
               className="bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none"
             >
               <option value="">Min</option>
-              {minYearOptions.map(y => (
+              {(isPart ? partsMinYearOptions : minYearOptions).map((y: number) => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
             <select
-              value={filters.yearRange[1] || ""}
-              onChange={(e) => onFilterChange('yearRange', [filters.yearRange[0], e.target.value ? Number(e.target.value) : null])}
+              value={(isPart ? filters.productionYearRange?.[1] : filters.yearRange[1]) ?? ""}
+              onChange={(e) => {
+                const v = e.target.value ? Number(e.target.value) : null;
+                if (isPart) {
+                  onFilterChange('productionYearRange', [(filters.productionYearRange ?? [null, null])[0], v]);
+                  onFilterChange('yearRange', [(filters.yearRange ?? [null, null])[0], v]);
+                } else {
+                  onFilterChange('yearRange', [filters.yearRange[0], v]);
+                }
+              }}
               className="bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none"
             >
               <option value="">Max</option>
-              {maxYearOptions.map(y => (
+              {(isPart ? partsMaxYearOptions : maxYearOptions).map((y: number) => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
@@ -446,9 +496,30 @@ export default function FilterSidebar({
           </div>
         </div>
 
-        {/* MORE DYNAMIC FIELDS & NEW FILTERS */}
+        {/* YEDEK PARÇA: Kondisyon */}
+        {isPart && (
+          <>
+            <Divider />
+            <div className="space-y-4">
+              <SectionHeader title="Parça Durumu (Kondisyon)" />
+              <ChoiceChips
+                options={[
+                  { label: 'Tümü', value: 'all' },
+                  { label: PARTS_CONDITION_LABELS.new_oem ?? 'Sıfır (OEM)', value: 'new_oem' },
+                  { label: PARTS_CONDITION_LABELS.new_aftermarket ?? 'Sıfır (Yan Sanayi)', value: 'new_aftermarket' },
+                  { label: PARTS_CONDITION_LABELS.used ?? 'Çıkma', value: 'used' },
+                  { label: PARTS_CONDITION_LABELS.refurbished ?? 'Yenilenmiş', value: 'refurbished' },
+                ]}
+                value={filters.condition && filters.condition !== 'all' ? filters.condition : 'all'}
+                onChange={(v) => onFilterChange('condition', v === 'all' ? null : v)}
+                cols={2}
+              />
+            </div>
+          </>
+        )}
 
-        {!isOtherMachines && (
+        {/* MAKİNE: Çalışma saati, Makine durumu, Kondisyon, Özellikler, Vinç, Forklift vb. */}
+        {!isPart && !isOtherMachines && (
           <>
             <Divider />
 
@@ -664,17 +735,17 @@ export default function FilterSidebar({
               </div>
             )}
 
-            {/* Key Logic: Tire Condition for others */}
-            {isTireConditionGroup && (
+            {/* Alt Tip Durumu: Bekoloder, Greyder, Telehandler vb. */}
+            {isSubTypeConditionGroup && (
               <div className="animate-in fade-in duration-300">
                 <Divider />
                 <div className="space-y-6">
                   <div className="space-y-3">
-                    <SectionHeader title="Lastik Kondisyonu" />
+                    <SectionHeader title="Alt Tip Durumu" />
                     <ChoiceChips
                       options={['%100', '%75+', '%50+', '%25+']}
-                      value={filters.tireCondition}
-                      onChange={(v) => onFilterChange('tireCondition', filters.tireCondition === v ? null : v)}
+                      value={filters.subTypeCondition}
+                      onChange={(v) => onFilterChange('subTypeCondition', filters.subTypeCondition === v ? null : v)}
                     />
                   </div>
                 </div>

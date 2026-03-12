@@ -21,7 +21,9 @@ export default function GlobalSearchInput({
 
     const handleSearch = () => {
         if (!query.trim()) return;
-        router.push(`/ilanlar?q=${encodeURIComponent(query.trim())}`);
+        // Arama sonuçlarının ilanlar sayfasında görünmesi için
+        // doğrudan varsayılan "satılık" sekmesine, query parametresiyle yönlendiriyoruz.
+        router.push(`/ilanlar/satilik?q=${encodeURIComponent(query.trim())}`);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

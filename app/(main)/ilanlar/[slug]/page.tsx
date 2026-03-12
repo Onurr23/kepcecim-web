@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { getMachineCategories, getCategoryFeatures, getCategoryAttachments } from "@/services/categories";
 import { searchSalesMachines, getSalesMachineCount } from "@/services/sales";
 import { searchRentalMachines, getRentalMachineCount } from "@/services/rental";
-import { searchParts, getPartsCategories, getPartsBrands, getPartsSubCategories } from "@/services/parts";
+import { searchParts, getPartsCategories, getPartsBrands, getPartsSubCategories, getPartsCount } from "@/services/parts";
 import { getAllBrands, getModelsByBrand, getBrandsByCategory } from "@/services/brands";
 import { staticClient } from "@/utils/supabase/static-client";
 import ListingsClient from "@/components/listing/ListingsClient";
@@ -24,10 +24,11 @@ const LISTING_QUERY_WHITELIST = [
     "fiyat_max", "price_max", "yil_min", "year_min", "yil_max", "year_max",
     "saat_min", "hours_min", "saat_max", "hours_max", "ozellikler", "features",
     "atasman", "attachments", "durum", "status", "kondisyon", "condition",
-    "alt_tip", "sub_type", "sinif", "class", "lastik_durumu", "tireCondition",
+    "alt_tip", "sub_type", "sinif", "class", "sub_type_condition", "lastik_durumu", "tireCondition",
     "mast_tipi", "mastType", "vinc_tipi", "craneType", "sasi_tipi", "chassisType",
     "kamyon_markasi", "truckBrand", "lastik_tipi", "tireType", "tekerlek_sayisi", "wheelCount",
     "yana_kaydirma", "sideShifter", "kapasite_min", "lifting_capacity_min", "kapasite_max", "lifting_capacity_max",
+    "alt_kategori", "stok",
 ];
 
 function buildCanonicalSearchParams(
@@ -159,7 +160,7 @@ export default async function DynamicListingsPage({ params, searchParams }: Prop
     // Dynamic Params Mapping
     const sub_type = (resolvedParams.alt_tip || resolvedParams.sub_type) as string;
     const cls = (resolvedParams.sinif || resolvedParams.class) as string;
-    const tireCondition = (resolvedParams.lastik_durumu || resolvedParams.tireCondition) as string;
+    const subTypeCondition = (resolvedParams.sub_type_condition || resolvedParams.lastik_durumu || resolvedParams.tireCondition) as string;
     const mastType = (resolvedParams.mast_tipi || resolvedParams.mastType) as string;
     const craneType = (resolvedParams.vinc_tipi || resolvedParams.craneType) as string;
     const chassisType = (resolvedParams.sasi_tipi || resolvedParams.chassisType) as string;
@@ -173,10 +174,13 @@ export default async function DynamicListingsPage({ params, searchParams }: Prop
     if (ssParam === 'true') sideShifter = true;
     else if (ssParam === 'false') sideShifter = false;
 
-    const sort = (resolvedParams.sirala || resolvedParams.sort || "created_at_desc") as string;
+    const sortParam = resolvedParams.sirala || resolvedParams.sort;
+    const sort = (sortParam as string) || (tab === 'part' ? 'relevance' : 'created_at_desc');
 
     const machineStatus = (resolvedParams.durum || resolvedParams.status) as string;
     const condition = (resolvedParams.kondisyon || resolvedParams.condition) as string;
+    const availability = (resolvedParams.musaitlik || resolvedParams.availability) as string; // Kiralık: 'true'|'false'|'all'
+    const inStockOnly = resolvedParams.stok === 'true' || resolvedParams.in_stock === 'true';
 
     const liftCapMin = resolvedParams.kapasite_min || resolvedParams.lifting_capacity_min;
     const liftCapMax = resolvedParams.kapasite_max || resolvedParams.lifting_capacity_max;
@@ -250,6 +254,17 @@ export default async function DynamicListingsPage({ params, searchParams }: Prop
     catFeatures = fetchedFeatures;
     catAttachments = fetchedAttachments;
 
+    // Yedek parça: alt kategori slug → id (fetchedModels for part tab = parts subcategories)
+    let resolvedPartSubCategoryId: string | null = null;
+    if (tab === 'part') {
+        const partSubCategories = fetchedModels as any[];
+        const paramAltKategori = (resolvedParams.alt_kategori ?? resolvedParams.sub_kategori) as string | undefined;
+        if (paramAltKategori && partSubCategories?.length) {
+            const subMatch = partSubCategories.find((s: any) => getSlug(s?.name) === slugify(paramAltKategori) || s?.id?.toString() === paramAltKategori);
+            if (subMatch) resolvedPartSubCategoryId = subMatch.id?.toString() ?? null;
+        }
+    }
+
     // Model: URL always has string (slug, e.g. "120g"). Resolve to model ID only; never pass URL string to RPC.
     const paramModelFromUrl = Array.isArray(resolvedParams.model)
         ? (resolvedParams.model[0] as string | undefined)
@@ -318,7 +333,7 @@ export default async function DynamicListingsPage({ params, searchParams }: Prop
         // Dynamic
         sub_type: sub_type,
         class: cls,
-        tireCondition: tireCondition,
+        subTypeCondition: subTypeCondition,
         mastType: mastType,
         craneType: craneType,
         chassisType: chassisType,
@@ -330,37 +345,69 @@ export default async function DynamicListingsPage({ params, searchParams }: Prop
             liftCapMin ? Number(liftCapMin) : null,
             liftCapMax ? Number(liftCapMax) : null
         ] as [number | null, number | null],
-        // New Filter mappings
         machineStatus: machineStatus,
         condition: condition,
         features: featureIds,
-        attachments: attachmentIds
+        attachments: attachmentIds,
+        availability: availability || undefined,
+        partSubCategory: tab === 'part' ? (resolvedPartSubCategoryId ?? undefined) : undefined,
+        productionYearRange: tab === 'part' ? [yearMin, yearMax] as [number | null, number | null] : undefined,
+        inStockOnly: tab === 'part' ? (inStockOnly || undefined) : undefined,
+        compatibleModels: []
     };
 
     // 5. Fetch Listings & Counts (Using resolved filters)
     const serviceFilters = { ...filters };
 
-    const fetchPromise = (() => {
+    const listingsResult = await (async () => {
         if (tab === "sale") return searchSalesMachines(serviceFilters, Number(resolvedParams.page) || 1, 20, staticClient);
         if (tab === "rent") return searchRentalMachines(serviceFilters, Number(resolvedParams.page) || 1, 20, staticClient);
         if (tab === "part") return searchParts(serviceFilters, Number(resolvedParams.page) || 1, 20, staticClient);
-        return Promise.resolve({ data: [], count: 0 });
+        return { data: [], count: 0 };
     })();
 
-    const countPromiseSale = getSalesMachineCount({ ...serviceFilters });
-    const countPromiseRent = getRentalMachineCount({ ...serviceFilters });
-    const countPromisePart = searchParts({ ...serviceFilters }, 1, 1, staticClient);
+    // Tab başlıklarındaki sayıların her zaman dolu olması için, her tab için
+    // filtresiz (sadece arama terimi varsa onu koruyan) toplam ilan sayısını da hesaplıyoruz.
+    const baseFiltersForTotals = {
+        query: (resolvedParams.arama || resolvedParams.q) as string,
+        sort: tab === "part" ? "relevance" : "created_at_desc",
+        category: null,
+        brand: null,
+        model: undefined,
+        city: null,
+        district: null,
+        priceRange: [null, null] as [number | null, number | null],
+        yearRange: [null, null] as [number | null, number | null],
+        hoursRange: [null, null] as [number | null, number | null],
+        liftingCapacity: [null, null] as [number | null, number | null],
+        liftingHeight: [null, null] as [number | null, number | null],
+        machineStatus: null,
+        condition: null,
+        availability: undefined,
+        sub_type: null,
+        class: null,
+        subTypeCondition: null,
+        mastType: null,
+        craneType: null,
+        chassisType: null,
+        truckBrand: null,
+        tireType: null,
+        wheelCount: null,
+        sideShifter: null,
+        features: [] as string[],
+        attachments: [] as string[],
+        partSubCategory: undefined,
+        productionYearRange: [null, null] as [number | null, number | null],
+        inStockOnly: undefined,
+        compatibleModels: [] as string[],
+    };
 
-    const [
-        listingsResult,
-        saleCountRes,
-        rentCountRes,
-        partCountRes,
-    ] = await Promise.all([
-        fetchPromise,
-        countPromiseSale,
-        countPromiseRent,
-        countPromisePart
+    const baseQuery = (resolvedParams.arama || resolvedParams.q) as string | undefined;
+
+    const [saleTotal, rentTotal, partTotal] = await Promise.all([
+        getSalesMachineCount({ query: baseQuery }),
+        getRentalMachineCount({ query: baseQuery }),
+        getPartsCount({ query: baseQuery }),
     ]);
 
     // 6. Map Data
@@ -412,9 +459,9 @@ export default async function DynamicListingsPage({ params, searchParams }: Prop
     });
 
     const counts = {
-        sale: saleCountRes, // Now returns number directly
-        rent: rentCountRes, // Now returns number directly
-        part: partCountRes.count // Keeps returning object
+        sale: tab === "sale" ? listingsResult.count : saleTotal,
+        rent: tab === "rent" ? listingsResult.count : rentTotal,
+        part: tab === "part" ? listingsResult.count : partTotal,
     };
 
     return (

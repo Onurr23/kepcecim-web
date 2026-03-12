@@ -4,6 +4,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { AppStoreQR } from "@/components/AppStoreQR";
+import OpenAppModalTrigger from "@/components/OpenAppModalTrigger";
 import { APP_STORE_URL_IOS, APP_STORE_URL_ANDROID } from "@/constants/appStore";
 
 export default function LandingPage() {
@@ -46,7 +47,7 @@ export default function LandingPage() {
                                 </p>
                                 <div className="flex flex-row items-center gap-4 w-full">
                                     {/* App Store Button */}
-                                    <a href={APP_STORE_URL_IOS} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-neutral-900 border border-white/20 rounded-xl px-4 py-2 hover:bg-neutral-800 transition-all active:scale-95 h-14 min-w-[160px]">
+                                    <a href="/out/app-store" className="flex items-center gap-3 bg-neutral-900 border border-white/20 rounded-xl px-4 py-2 hover:bg-neutral-800 transition-all active:scale-95 h-14 min-w-[160px]">
                                         <img
                                             src="/apple.png"
                                             alt="Apple"
@@ -59,7 +60,7 @@ export default function LandingPage() {
                                     </a>
 
                                     {/* Google Play Button */}
-                                    <a href={APP_STORE_URL_ANDROID} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-neutral-900 border border-white/20 rounded-xl px-4 py-2 hover:bg-neutral-800 transition-all active:scale-95 h-14 min-w-[160px]">
+                                    <a href="/out/google-play" className="flex items-center gap-3 bg-neutral-900 border border-white/20 rounded-xl px-4 py-2 hover:bg-neutral-800 transition-all active:scale-95 h-14 min-w-[160px]">
                                         <img
                                             src="/play_store.png"
                                             alt="Google Play"
@@ -269,10 +270,12 @@ export default function LandingPage() {
                         <p className="text-lg text-neutral-400">
                             Kurumsal üyelik ile sınırsız ilan, detaylı istatistikler ve marka bilinirliği.
                         </p>
-                        <button className="inline-flex items-center gap-2 px-8 py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-all duration-300 font-bold uppercase tracking-wider shadow-lg hover:shadow-orange-600/20">
-                            Kurumsal Başvuru Yap
-                            <ArrowRight size={20} />
-                        </button>
+                        <OpenAppModalTrigger triggerType="general">
+                            <span className="inline-flex items-center gap-2 px-8 py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-all duration-300 font-bold uppercase tracking-wider shadow-lg hover:shadow-orange-600/20">
+                                Kurumsal Başvuru Yap
+                                <ArrowRight size={20} />
+                            </span>
+                        </OpenAppModalTrigger>
                     </div>
                 </motion.div>
             </section>
@@ -304,15 +307,15 @@ export default function LandingPage() {
                                     variant="card"
                                     className="gap-8"
                                 />
-                                <div className="flex flex-row flex-wrap items-center justify-center gap-4 w-full">
-                                    <a href={APP_STORE_URL_IOS} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-xl bg-neutral-900 border border-white/20 px-5 py-3 hover:bg-neutral-800 hover:border-orange-500/30 transition-all active:scale-[0.98]">
+                                    <div className="flex flex-row flex-wrap items-center justify-center gap-4 w-full">
+                                    <a href="/out/app-store" className="flex items-center gap-3 rounded-xl bg-neutral-900 border border-white/20 px-5 py-3 hover:bg-neutral-800 hover:border-orange-500/30 transition-all active:scale-[0.98]">
                                         <img src="/apple.png" alt="Apple" className="h-7 w-7 object-contain" />
                                         <div className="flex flex-col items-start leading-none text-white">
                                             <span className="text-[10px] font-medium text-neutral-400 uppercase">Download on the</span>
                                             <span className="text-sm font-bold font-oswald tracking-wide">App Store</span>
                                         </div>
                                     </a>
-                                    <a href={APP_STORE_URL_ANDROID} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-xl bg-neutral-900 border border-white/20 px-5 py-3 hover:bg-neutral-800 hover:border-orange-500/30 transition-all active:scale-[0.98]">
+                                    <a href="/out/google-play" className="flex items-center gap-3 rounded-xl bg-neutral-900 border border-white/20 px-5 py-3 hover:bg-neutral-800 hover:border-orange-500/30 transition-all active:scale-[0.98]">
                                         <img src="/play_store.png" alt="Google Play" className="h-6 w-6 object-contain" />
                                         <div className="flex flex-col items-start leading-none text-white">
                                             <span className="text-[10px] font-medium text-neutral-400 uppercase">Get it on</span>
@@ -325,15 +328,15 @@ export default function LandingPage() {
 
                         {/* Mobile: only store buttons */}
                         <div className="flex md:hidden flex-col items-center gap-6">
-                            <div className="flex flex-row flex-wrap justify-center gap-4">
-                                <a href={APP_STORE_URL_IOS} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 bg-neutral-900 border border-white/20 rounded-xl px-4 py-3 hover:bg-neutral-800 active:scale-95">
+                                <div className="flex flex-row flex-wrap justify-center gap-4">
+                                <a href="/out/app-store" className="flex items-center gap-2.5 bg-neutral-900 border border-white/20 rounded-xl px-4 py-3 hover:bg-neutral-800 active:scale-95">
                                     <img src="/apple.png" alt="Apple" className="h-6 w-6 object-contain" />
                                     <div className="flex flex-col items-start leading-none text-white">
                                         <span className="text-[8px] font-medium text-neutral-400 uppercase">Download on the</span>
                                         <span className="text-sm font-bold font-oswald tracking-wide">App Store</span>
                                     </div>
                                 </a>
-                                <a href={APP_STORE_URL_ANDROID} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 bg-neutral-900 border border-white/20 rounded-xl px-4 py-3 hover:bg-neutral-800 active:scale-95">
+                                <a href="/out/google-play" className="flex items-center gap-2.5 bg-neutral-900 border border-white/20 rounded-xl px-4 py-3 hover:bg-neutral-800 active:scale-95">
                                     <img src="/play_store.png" alt="Google Play" className="h-5 w-5 object-contain" />
                                     <div className="flex flex-col items-start leading-none text-white">
                                         <span className="text-[8px] font-medium text-neutral-400 uppercase">Get it on</span>

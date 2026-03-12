@@ -1,8 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 // Add Sparkles icon
-import { MapPin, Calendar, Clock, Sparkles, Heart } from "lucide-react";
-import AppGuard from "@/components/ui/AppGuard";
+import { MapPin, Calendar, Clock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { slugify } from "@/utils/slugify";
 
@@ -90,20 +89,6 @@ export default function ListingCard({ id, title, price, location, image, type, s
             </div>
           )}
 
-          {/* Favorite Button (Bottom Right) - New Addition */}
-          <div className="absolute top-3 right-14 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300">
-            <div onClick={(e) => {
-              e.preventDefault();
-              // AppGuard handles its own click but since we are wrapping button, we need AppGuard
-              // Actually AppGuard wraps the child.
-            }}>
-              <AppGuard trigger="favorite">
-                <button className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md hover:bg-white hover:text-red-500 transition-colors">
-                  <Heart className="h-4 w-4" />
-                </button>
-              </AppGuard>
-            </div>
-          </div>
         </div>
 
         {/* Content */}

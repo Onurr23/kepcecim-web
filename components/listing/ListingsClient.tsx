@@ -8,13 +8,13 @@ import FilterSidebar from "@/components/listing/FilterSidebar";
 import FilterButton from "@/components/listing/FilterButton";
 import ListingCard from "@/components/listing/ListingCard";
 import ListingCardSkeleton from "@/components/listing/ListingCardSkeleton";
-import InFeedCTA from "@/components/listing/InFeedCTA";
 import NoResults from "@/components/listing/NoResults";
 import { cn } from "@/lib/utils";
 import { useListingFilters, FilterState, initialFilters } from "@/hooks/useListingFilters";
 
 import { getAllCities } from "@/utils/cityDistricts";
 import { slugify } from "@/utils/slugify";
+import { PARTS_CONDITION_LABELS } from "@/constants/listing-specs";
 
 const SORT_OPTIONS = [
     { value: 'created_at_desc', label: 'En Yeni' },
@@ -23,6 +23,16 @@ const SORT_OPTIONS = [
     { value: 'price_desc', label: 'Fiyat (Azalan)' },
     { value: 'year_desc', label: 'Yıl (Yeni-Eski)' },
     { value: 'year_asc', label: 'Yıl (Eski-Yeni)' },
+];
+
+const SORT_OPTIONS_PARTS = [
+    { value: 'relevance', label: 'Önerilen' },
+    { value: 'newest', label: 'En Yeni' },
+    { value: 'oldest', label: 'En Eski' },
+    { value: 'price_low', label: 'Fiyat (Düşük)' },
+    { value: 'price_high', label: 'Fiyat (Yüksek)' },
+    { value: 'year_new', label: 'Yıl (Yeni)' },
+    { value: 'year_old', label: 'Yıl (Eski)' },
 ];
 
 interface ListingsClientProps {
@@ -79,7 +89,7 @@ function ListingsContent({
         isCrane,
         isExcavator,
         isLoader,
-        isTireConditionGroup
+        isSubTypeConditionGroup
     } = useListingFilters(
         initialCategories,
         initialBrands,
@@ -187,8 +197,8 @@ function ListingsContent({
         setOrDelete("sinif", filtersToApply.class || null);
         params.delete("class");
 
-        setOrDelete("lastik_durumu", filtersToApply.tireCondition || null);
-        params.delete("tireCondition");
+        setOrDelete("sub_type_condition", filtersToApply.subTypeCondition || null);
+        params.delete("subTypeCondition");
 
         setOrDelete("mast_tipi", filtersToApply.mastType || null);
         params.delete("mastType");
@@ -211,6 +221,14 @@ function ListingsContent({
         setOrDelete("yana_kaydirma", filtersToApply.sideShifter !== null && filtersToApply.sideShifter !== undefined ? String(filtersToApply.sideShifter) : null);
         params.delete("sideShifter");
 
+        // Yedek parça: alt_kategori, stok
+        if (activeTab === "part") {
+            const partSub = filtersToApply.partSubCategory;
+            const subCat = partSub ? (availableModels as any[]).find((m: any) => m.id?.toString() === partSub) : null;
+            setOrDelete("alt_kategori", subCat ? getSlug(subCat.name) : (partSub || null));
+            setOrDelete("stok", filtersToApply.inStockOnly === true ? "true" : null);
+        }
+
         // Price
         setOrDelete("fiyat_min", filtersToApply.priceRange[0]?.toString() || null);
         params.delete("price_min");
@@ -225,7 +243,8 @@ function ListingsContent({
         setOrDelete("kapasite_max", filtersToApply.liftingCapacity?.[1]?.toString() || null);
         params.delete("lifting_capacity_max");
 
-        if (filtersToApply.sort && filtersToApply.sort !== 'created_at_desc') params.set("sirala", filtersToApply.sort);
+        const defaultSort = activeTab === "part" ? "relevance" : "created_at_desc";
+        if (filtersToApply.sort && filtersToApply.sort !== defaultSort) params.set("sirala", filtersToApply.sort);
         else params.delete("sirala");
         params.delete("sort"); // cleanup old
 
@@ -234,15 +253,35 @@ function ListingsContent({
 
     const applyFiltersToUrl = (filtersToApply: FilterState) => {
         const params = serializeFiltersToParams(filtersToApply, true);
-        params.delete("page"); // Reset page
+        params.delete("page");
         const newQuery = params.toString();
         startTransition(() => {
             router.push(newQuery ? `?${newQuery}` : window.location.pathname);
         });
     };
 
+    // Mobil spec: aralık validasyonu (min ≤ max); geçersizse düzeltilmiş değerlerle uygula
+    const validatedFiltersForApply = (raw: FilterState): FilterState => {
+        const ensureRange = <T extends number | null>(a: T, b: T): [T, T] => {
+            if (a == null && b == null) return [a, b];
+            if (a != null && b != null && a > b) return [b, a];
+            return [a, b];
+        };
+        const py = raw.productionYearRange ?? [null, null];
+        return {
+            ...raw,
+            priceRange: ensureRange(raw.priceRange[0], raw.priceRange[1]),
+            yearRange: ensureRange(raw.yearRange[0], raw.yearRange[1]),
+            hoursRange: ensureRange(raw.hoursRange?.[0] ?? null, raw.hoursRange?.[1] ?? null),
+            liftingCapacity: raw.liftingCapacity ? ensureRange(raw.liftingCapacity[0], raw.liftingCapacity[1]) : [null, null],
+            productionYearRange: ensureRange(py[0], py[1]) as [number | null, number | null],
+        } as FilterState;
+    };
+
     const handleApply = () => {
-        applyFiltersToUrl(filtersRef.current);
+        const validated = validatedFiltersForApply(filtersRef.current);
+        if (validated !== filtersRef.current) setFilters(validated);
+        applyFiltersToUrl(validated);
     };
 
     // Auto-apply logic for Category, Brand, and Model
@@ -293,10 +332,11 @@ function ListingsContent({
         if (pModel != null) {
             const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pModel);
             const modelSlug = slugify(pModel);
-            const resolvedModelId = isUuid
-                ? pModel
-                : availableModels.find((m: any) => getSlug(m.name) === modelSlug)?.id?.toString() ?? pModel;
-            if (resolvedModelId !== filters.model) updateFilter("model", resolvedModelId);
+            const resolvedFromList = availableModels.find((m: any) => getSlug(m.name) === modelSlug)?.id?.toString();
+            const resolvedModelId = isUuid ? pModel : (resolvedFromList ?? pModel);
+            // Only update filter when we have a real resolution (from list or UUID param); don't overwrite server's resolved ID with raw slug "120"
+            if (resolvedModelId !== filters.model && (resolvedFromList != null || isUuid))
+                updateFilter("model", resolvedModelId);
         }
 
         const hMin = searchParams.get("saat_min") || searchParams.get("hours_min");
@@ -310,6 +350,25 @@ function ListingsContent({
 
         const cond = searchParams.get("kondisyon") || searchParams.get("condition");
         if (cond && cond !== filters.condition) updateFilter("condition", cond);
+
+        // Yedek parça: alt_kategori → partSubCategory, stok → inStockOnly, yil → productionYearRange
+        if (activeTab === "part") {
+            const altKategori = searchParams.get("alt_kategori") || searchParams.get("sub_kategori");
+            if (altKategori != null) {
+                const subSlug = slugify(altKategori);
+                const resolvedSubId = (availableModels as any[]).find((m: any) => getSlug(m?.name) === subSlug || m?.id?.toString() === altKategori)?.id?.toString();
+                if (resolvedSubId !== filters.partSubCategory) updateFilter("partSubCategory", resolvedSubId || null);
+            } else if (filters.partSubCategory) updateFilter("partSubCategory", null);
+            const stok = searchParams.get("stok");
+            const inStock = stok === "true";
+            if (inStock !== (filters.inStockOnly === true)) updateFilter("inStockOnly", inStock);
+            const yMin = searchParams.get("yil_min") || searchParams.get("year_min");
+            const yMax = searchParams.get("yil_max") || searchParams.get("year_max");
+            const pyMin = yMin ? Number(yMin) : null;
+            const pyMax = yMax ? Number(yMax) : null;
+            const samePy = (filters.productionYearRange?.[0] ?? null) === pyMin && (filters.productionYearRange?.[1] ?? null) === pyMax;
+            if (!samePy) updateFilter("productionYearRange", [pyMin, pyMax] as [number | null, number | null]);
+        }
 
         // Features (Comma separated slugs -> IDs)
         // We need 'categoryFeatures' which is in state/hook.
@@ -354,10 +413,11 @@ function ListingsContent({
         }
 
         const sortParam = searchParams.get("sirala") || searchParams.get("sort");
+        const defaultSort = activeTab === "part" ? "relevance" : "created_at_desc";
         if (sortParam && sortParam !== filters.sort) {
             updateFilter("sort", sortParam);
-        } else if (!sortParam && filters.sort !== 'created_at_desc') {
-            updateFilter("sort", 'created_at_desc');
+        } else if (!sortParam && filters.sort !== defaultSort) {
+            updateFilter("sort", defaultSort);
         }
 
         // Other new params
@@ -378,51 +438,151 @@ function ListingsContent({
         if (targetTab === "rent") path = "/ilanlar/kiralik";
         else if (targetTab === "part") path = "/ilanlar/yedek-parca";
 
-        // Logic: 
-        // User requested independent tabs. Switching tabs clears ALL filters.
-        return path;
+        // Kural:
+        // - Eğer global search bar'dan gelinmişse (q / arama paramı varsa),
+        //   tab değiştirirken mevcut filtreler korunur.
+        // - Eğer search bar'dan gelinmemişse, eski davranış devam eder:
+        //   tab değişiminde filtreler sıfırlanır (sadece path değişir).
+        const hasGlobalSearch =
+            searchParams.get("q") !== null || searchParams.get("arama") !== null;
+
+        if (!hasGlobalSearch) {
+            // Eski davranış: sadece path değişsin, query string taşınmasın.
+            return path;
+        }
+
+        // Global arama varken: filtreleri koru, sadece page'i temizle.
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("page");
+        const qs = params.toString();
+        return qs ? `${path}?${qs}` : path;
     };
 
+    // Map filter keys to URL param names (mobil spec: URL ile senkron)
     const removeActiveFilter = (key: string) => {
-        // Update Draft
-        // Map key to filter key
-        // Update URL directly?
-        // We update Draft, and let 'useEffect' trigger apply?
-        // No, 'useEffect' only triggers on Cat/Brand/Model change.
-        // For others, we must trigger Apply.
-
-        // Better: Manipulate URL directly for removal.
         const params = new URLSearchParams(searchParams);
 
         if (key === 'category') {
             params.delete("kategori");
             params.delete("category");
-            updateFilter('category', null); // Sync draft
-        }
-        else if (key === 'brand') {
+            updateFilter('category', null);
+        } else if (key === 'brand') {
             params.delete("marka");
             params.delete("brand");
             updateFilter('brand', null);
-            params.delete("model"); // model depends on brand
-            updateFilter('model', null);
-        }
-        else if (key === 'model') {
             params.delete("model");
             updateFilter('model', null);
-        }
-        else if (key === 'yearRange') {
+        } else if (key === 'model') {
+            params.delete("model");
+            updateFilter('model', null);
+        } else if (key === 'yearRange') {
+            params.delete("yil_min");
             params.delete("year_min");
+            params.delete("yil_max");
             params.delete("year_max");
             updateFilter('yearRange', [null, null]);
-        }
-        else if (key === 'priceRange') {
+        } else if (key === 'priceRange') {
+            params.delete("fiyat_min");
             params.delete("price_min");
+            params.delete("fiyat_max");
             params.delete("price_max");
             updateFilter('priceRange', [null, null]);
-        }
-        else {
+        } else if (key === 'hoursRange') {
+            params.delete("saat_min");
+            params.delete("hours_min");
+            params.delete("saat_max");
+            params.delete("hours_max");
+            updateFilter('hoursRange', [null, null]);
+        } else if (key === 'city') {
+            params.delete("sehir");
+            params.delete("city");
+            params.delete("ilce");
+            params.delete("district");
+            updateFilter('city', null);
+            updateFilter('district', null);
+        } else if (key === 'district') {
+            params.delete("ilce");
+            params.delete("district");
+            updateFilter('district', null);
+        } else if (key === 'machineStatus') {
+            params.delete("durum");
+            params.delete("status");
+            updateFilter('machineStatus', null);
+        } else if (key === 'condition') {
+            params.delete("kondisyon");
+            params.delete("condition");
+            updateFilter('condition', null);
+        } else if (key === 'features') {
+            params.delete("ozellikler");
+            params.delete("features");
+            updateFilter('features', []);
+        } else if (key === 'attachments') {
+            params.delete("atasman");
+            params.delete("attachments");
+            updateFilter('attachments', []);
+        } else if (key === 'sub_type') {
+            params.delete("alt_tip");
+            params.delete("sub_type");
+            updateFilter('sub_type', null);
+        } else if (key === 'class') {
+            params.delete("sinif");
+            params.delete("class");
+            updateFilter('class', null);
+        } else if (key === 'subTypeCondition') {
+            params.delete("sub_type_condition");
+            params.delete("lastik_durumu");
+            params.delete("tireCondition");
+            updateFilter('subTypeCondition', null);
+        } else if (key === 'mastType') {
+            params.delete("mast_tipi");
+            params.delete("mastType");
+            updateFilter('mastType', null);
+        } else if (key === 'craneType') {
+            params.delete("vinc_tipi");
+            params.delete("craneType");
+            updateFilter('craneType', null);
+        } else if (key === 'chassisType') {
+            params.delete("sasi_tipi");
+            params.delete("chassisType");
+            updateFilter('chassisType', null);
+        } else if (key === 'truckBrand') {
+            params.delete("kamyon_markasi");
+            params.delete("truckBrand");
+            updateFilter('truckBrand', null);
+        } else if (key === 'tireType') {
+            params.delete("lastik_tipi");
+            params.delete("tireType");
+            updateFilter('tireType', null);
+        } else if (key === 'wheelCount') {
+            params.delete("tekerlek_sayisi");
+            params.delete("wheelCount");
+            updateFilter('wheelCount', null);
+        } else if (key === 'sideShifter') {
+            params.delete("yana_kaydirma");
+            params.delete("sideShifter");
+            updateFilter('sideShifter', null);
+        } else if (key === 'liftingCapacity') {
+            params.delete("kapasite_min");
+            params.delete("lifting_capacity_min");
+            params.delete("kapasite_max");
+            params.delete("lifting_capacity_max");
+            updateFilter('liftingCapacity', [null, null]);
+        } else if (key === 'partSubCategory') {
+            params.delete("alt_kategori");
+            params.delete("sub_kategori");
+            updateFilter('partSubCategory', null);
+        } else if (key === 'inStockOnly') {
+            params.delete("stok");
+            updateFilter('inStockOnly', false);
+        } else if (key === 'productionYearRange') {
+            params.delete("yil_min");
+            params.delete("year_min");
+            params.delete("yil_max");
+            params.delete("year_max");
+            updateFilter('productionYearRange', [null, null]);
+            updateFilter('yearRange', [null, null]);
+        } else {
             params.delete(key);
-            // Try to sync draft
             if (filters[key as keyof FilterState] !== undefined) {
                 updateFilter(key as keyof FilterState, null);
             }
@@ -436,15 +596,14 @@ function ListingsContent({
 
     const handleClearAll = () => {
         resetFilters();
-        prevFiltersRef.current = initialFilters; // Sync ref
+        prevFiltersRef.current = { ...initialFilters };
+        updateFilter("query", null);
 
-        // Clear params
         const params = new URLSearchParams();
-        if (searchParams.get("tab")) params.set("tab", searchParams.get("tab")!); // Keep tab
-        // Keep sort if desired, or reset? Usually reset clears sort too or keeps default. Default is fine.
+        if (searchParams.get("tab")) params.set("tab", searchParams.get("tab")!);
 
         startTransition(() => {
-            router.push(`?${params.toString()}`);
+            router.push(params.toString() ? `?${params.toString()}` : window.location.pathname);
         });
     };
 
@@ -488,7 +647,7 @@ function ListingsContent({
             modelId: p.get("model"),
             sub_type: p.get("alt_tip") || p.get("sub_type"),
             class: p.get("class") || p.get("sinif"),
-            tireCondition: p.get("lastik_durumu") || p.get("tireCondition"),
+            subTypeCondition: p.get("sub_type_condition") || p.get("lastik_durumu") || p.get("tireCondition"),
             priceMin: p.get("fiyat_min") || p.get("price_min"),
             priceMax: p.get("fiyat_max") || p.get("price_max"),
             yearMin: p.get("yil_min") || p.get("year_min"),
@@ -497,21 +656,24 @@ function ListingsContent({
             hoursMax: p.get("saat_max") || p.get("hours_max"),
             status: p.get("durum") || p.get("status"),
             condition: p.get("kondisyon") || p.get("condition"),
-            features: p.get("ozellikler") || p.getAll("features"), // String or Array
+            features: p.get("ozellikler") || p.getAll("features"),
             attachments: p.get("atasman") || p.getAll("attachments"),
+            altKategori: p.get("alt_kategori") || p.get("sub_kategori"),
+            stok: p.get("stok"),
         };
     }, [searchParams]);
 
     const hasActiveFilters = Boolean(
         appliedParams.q || appliedParams.categorySlug || appliedParams.brandSlug ||
         appliedParams.city || appliedParams.district || appliedParams.modelId ||
-        appliedParams.sub_type || appliedParams.class || appliedParams.tireCondition ||
+        appliedParams.sub_type || appliedParams.class || appliedParams.subTypeCondition ||
         appliedParams.priceMin || appliedParams.priceMax ||
         appliedParams.yearMin || appliedParams.yearMax ||
         appliedParams.hoursMin || appliedParams.hoursMax ||
         appliedParams.status || appliedParams.condition ||
         (appliedParams.features && appliedParams.features.length > 0) ||
-        (appliedParams.attachments && appliedParams.attachments.length > 0)
+        (appliedParams.attachments && appliedParams.attachments.length > 0) ||
+        appliedParams.altKategori || appliedParams.stok === "true"
     );
 
     const getCategoryNameFromSlug = (slug: string | null) => {
@@ -525,11 +687,14 @@ function ListingsContent({
         return b?.name || slug;
     };
     const getModelNameFromId = (id: string | null) => {
-        // Try available models first
-        const m = availableModels.find((mod: any) => mod.id.toString() === id);
+        const m = availableModels.find((mod: any) => mod.id?.toString() === id);
         if (m) return m.name;
-        // Return ID if name not found (since we removed extra fetch) or "Model"
         return "Model: " + id;
+    };
+    const getPartSubCategoryName = (slugOrId: string | null) => {
+        if (!slugOrId) return "";
+        const sub = (availableModels as any[]).find((s: any) => getSlug(s?.name) === slugify(slugOrId) || s?.id?.toString() === slugOrId);
+        return sub?.name ?? slugOrId;
     };
 
     const formatPriceChip = (val: number | null) => {
@@ -587,7 +752,7 @@ function ListingsContent({
                                 isCrane={isCrane}
                                 isExcavator={isExcavator}
                                 isLoader={isLoader}
-                                isTireConditionGroup={isTireConditionGroup}
+                                isSubTypeConditionGroup={isSubTypeConditionGroup}
                                 isPart={activeTab === 'part'}
                                 hasPendingChanges={hasPendingChanges}
                                 pendingCount={pendingCount}
@@ -636,14 +801,14 @@ function ListingsContent({
                                             className="flex items-center gap-2 px-3 py-2 text-xs sm:text-sm text-neutral-400 hover:text-white transition-colors"
                                         >
                                             <ArrowUpDown className="w-4 h-4" />
-                                            <span>{SORT_OPTIONS.find(o => o.value === filters.sort)?.label || 'Sıralama'}</span>
+                                            <span>{(activeTab === "part" ? SORT_OPTIONS_PARTS : SORT_OPTIONS).find(o => o.value === filters.sort)?.label || 'Sıralama'}</span>
                                         </button>
 
                                         {isSortOpen && (
                                             <>
                                                 <div className="fixed inset-0 z-10" onClick={() => setIsSortOpen(false)} />
                                                 <div className="absolute right-0 top-full mt-2 w-48 bg-neutral-900 border border-white/10 rounded-xl shadow-xl z-20 overflow-hidden">
-                                                    {SORT_OPTIONS.map(opt => (
+                                                    {(activeTab === "part" ? SORT_OPTIONS_PARTS : SORT_OPTIONS).map(opt => (
                                                         <button
                                                             key={opt.value}
                                                             onClick={() => {
@@ -685,10 +850,28 @@ function ListingsContent({
                                                 <button onClick={() => removeActiveFilter('brand')} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
                                             </div>
                                         )}
-                                        {appliedParams.modelId && (
+                                        {appliedParams.modelId && !(activeTab === "part") && (
                                             <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
                                                 <span>{getModelNameFromId(appliedParams.modelId)}</span>
                                                 <button onClick={() => removeActiveFilter('model')} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
+                                            </div>
+                                        )}
+                                        {activeTab === "part" && appliedParams.altKategori && (
+                                            <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
+                                                <span>Alt kategori: {getPartSubCategoryName(appliedParams.altKategori)}</span>
+                                                <button onClick={() => removeActiveFilter('partSubCategory')} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
+                                            </div>
+                                        )}
+                                        {activeTab === "part" && appliedParams.stok === "true" && (
+                                            <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
+                                                <span>Sadece stokta</span>
+                                                <button onClick={() => removeActiveFilter('inStockOnly')} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
+                                            </div>
+                                        )}
+                                        {appliedParams.condition && (
+                                            <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-200">
+                                                <span>{activeTab === "part" ? (PARTS_CONDITION_LABELS[appliedParams.condition] ?? appliedParams.condition) : appliedParams.condition}</span>
+                                                <button onClick={() => removeActiveFilter('condition')} className="ml-1 hover:text-white"><X className="h-3 w-3" /></button>
                                             </div>
                                         )}
                                         {appliedParams.city && (
@@ -706,11 +889,8 @@ function ListingsContent({
                         {initialListings.length > 0 ? (
                             <>
                                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                                    {initialListings.map((listing: any, index: number) => (
-                                        <React.Fragment key={listing.id}>
-                                            <ListingCard {...listing} />
-                                            {index === 5 && <InFeedCTA />}
-                                        </React.Fragment>
+                                    {initialListings.map((listing: any) => (
+                                        <ListingCard key={listing.id} {...listing} />
                                     ))}
                                 </div>
                                 <div className="mt-12 flex items-center justify-center gap-4">

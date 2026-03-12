@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Manrope, Oswald, Roboto } from "next/font/google";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/react";
 import SmartAppBanner from "@/components/layout/SmartAppBanner";
 import { AppModalProvider } from "@/contexts/AppModalContext";
+import QueryProvider from "@/components/providers/QueryProvider";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -63,10 +65,13 @@ export default function RootLayout({
   return (
     <html lang="tr">
       <body className={`${manrope.variable} ${oswald.variable} ${roboto.variable} font-sans antialiased`} suppressHydrationWarning>
-        <AppModalProvider>
-          <SmartAppBanner />
-          {children}
-        </AppModalProvider>
+        <QueryProvider>
+          <AppModalProvider>
+            <SmartAppBanner />
+            {children}
+          </AppModalProvider>
+        </QueryProvider>
+        <Analytics />
       </body>
     </html>
   );

@@ -140,7 +140,7 @@ export default function MobileAppSection() {
 
 function StoreButton({ platform }: { platform: 'ios' | 'android' }) {
     const isIOS = platform === 'ios';
-    const href = isIOS ? APP_STORE_URL_IOS : APP_STORE_URL_ANDROID;
+    const href = isIOS ? "/out/app-store" : "/out/google-play";
     return (
         <a
             href={href}

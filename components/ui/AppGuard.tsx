@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { TriggerType } from "./AppRedirectOverlay";
 import { useAppModal } from "@/contexts/AppModalContext";
 
-type AppGuardTrigger = "call" | "message" | "favorite" | "gallery";
+type AppGuardTrigger = "call" | "message" | "gallery";
 
 interface AppGuardProps {
     children: React.ReactNode;
@@ -19,8 +19,6 @@ function getOverlayTriggerType(t: AppGuardTrigger): TriggerType {
         case "call":
         case "message":
             return "contact";
-        case "favorite":
-            return "favorite";
         case "gallery":
         default:
             return "general";
