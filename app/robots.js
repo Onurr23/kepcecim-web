@@ -4,7 +4,7 @@ export default function robots() {
         rules: {
             userAgent: '*',
             allow: '/',
-            disallow: ['/webview/', '/api/', '/_next/'],
+            disallow: ['/webview/', '/api/'],
         },
         sitemap: `${baseUrl.replace(/\/$/, '')}/sitemap.xml`,
     };

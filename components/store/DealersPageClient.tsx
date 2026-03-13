@@ -15,6 +15,7 @@ import {
 import { getStores, type Store as StoreType } from "@/services/store";
 import DealerCardSkeleton from "@/components/store/DealerCardSkeleton";
 import CITIES_DATA from "@/constants/cityAndDistricts.json";
+import OpenAppModalTrigger from "@/components/OpenAppModalTrigger";
 
 const formatCityName = (name: string) => {
   return name
@@ -238,8 +239,8 @@ export default function DealersPageClient({
               </Link>
             ))}
 
-            <Link
-              href="/kurumsal-uyelik"
+            <OpenAppModalTrigger
+              triggerType="general"
               className="group relative flex flex-col items-center justify-center text-center p-6 rounded-xl border-2 border-dashed border-neutral-700 hover:border-orange-500 hover:bg-orange-500/5 transition-all duration-300 min-h-[300px]"
             >
               <div className="w-16 h-16 rounded-full bg-neutral-800 flex items-center justify-center mb-4 group-hover:bg-orange-500 group-hover:scale-110 transition-all duration-300">
@@ -252,10 +253,10 @@ export default function DealersPageClient({
                 Hemen indirimli fiyatlarla mağazanızı oluşturun, milyonlara
                 ulaşın.
               </p>
-              <button className="h-9 px-4 border border-white/20 rounded-md text-sm font-medium text-white hover:bg-white hover:text-black hover:border-white transition-colors">
+              <span className="h-9 px-4 border border-white/20 rounded-md text-sm font-medium text-white hover:bg-white hover:text-black hover:border-white transition-colors inline-flex items-center justify-center">
                 Mağaza Aç
-              </button>
-            </Link>
+              </span>
+            </OpenAppModalTrigger>
           </div>
         )}
       </div>

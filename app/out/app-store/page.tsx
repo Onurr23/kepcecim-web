@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { APP_STORE_URL_IOS } from "@/constants/appStore";
 
 export default function AppStoreRedirectPage() {
   useEffect(() => {
-    window.location.href =
-      "https://apps.apple.com/app/idYOUR_APP_ID";
+    window.location.href = APP_STORE_URL_IOS;
   }, []);
 
   return (

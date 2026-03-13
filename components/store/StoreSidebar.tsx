@@ -1,5 +1,6 @@
 import { Phone, MessageCircle, MapPin } from "lucide-react";
 import Image from "next/image";
+import OpenAppModalTrigger from "@/components/OpenAppModalTrigger";
 
 interface StoreSidebarProps {
     phone: string;
@@ -26,14 +27,20 @@ export default function StoreSidebar({
         <div className="sticky top-24 hidden h-fit w-full flex-col gap-6 lg:flex">
             {/* Contact Card */}
             <div className="flex flex-col gap-3 rounded-2xl bg-[#121212] p-5 border border-white/5">
-                <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3.5 text-base font-bold text-black transition-transform hover:scale-[1.02] active:scale-[0.98]">
+                <OpenAppModalTrigger
+                    triggerType="contact"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3.5 text-base font-bold text-black transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                >
                     <Phone className="h-5 w-5" />
                     <span>ARA</span>
-                </button>
-                <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-transparent px-4 py-3.5 text-base font-bold text-white transition-all hover:bg-white/5 active:scale-[0.98]">
+                </OpenAppModalTrigger>
+                <OpenAppModalTrigger
+                    triggerType="contact"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-transparent px-4 py-3.5 text-base font-bold text-white transition-all hover:bg-white/5 active:scale-[0.98]"
+                >
                     <MessageCircle className="h-5 w-5" />
                     <span>MESAJ AT</span>
-                </button>
+                </OpenAppModalTrigger>
             </div>
 
             {/* Location Card */}

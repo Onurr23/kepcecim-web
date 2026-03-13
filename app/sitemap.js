@@ -43,17 +43,24 @@ export default async function sitemap() {
     const [salesResult, rentalResult, partsResult, storesResult] = await Promise.all([
         supabase
             .from('sales_machines')
-            .select('id, updated_at, title, brand:brand(name), model:model(name)'),
+            .select('id, updated_at, title, brand:brand(name), model:model(name)')
+            .eq('status', 'active')
+            .limit(5000),
         supabase
             .from('rental_machines')
-            .select('id, updated_at, title, brand:brand(name), model:model(name)'),
+            .select('id, updated_at, title, brand:brand(name), model:model(name)')
+            .eq('status', 'active')
+            .limit(5000),
         supabase
             .from('parts')
-            .select('id, updated_at, title, brand:parts_brands(name), category:parts_categories(name)'),
+            .select('id, updated_at, title, brand:parts_brands(name), category:parts_categories(name)')
+            .eq('status', 'active')
+            .limit(5000),
         supabase
             .from('user_profiles')
             .select('id, updated_at, created_at, store_name, name')
             .eq('is_store', true)
+            .limit(5000)
     ]);
 
     const sales = salesResult.data || [];

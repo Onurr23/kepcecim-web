@@ -17,7 +17,7 @@ interface PageProps {
 const getStorageUrl = (path: string | null | undefined) => {
   if (!path) return "";
   if (path.startsWith('http')) return path;
-  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://yvritvbtpntvwyispsid.supabase.co";
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   return `${baseUrl}/storage/v1/object/public/machine-images/${path}`;
 };
 

@@ -3,6 +3,7 @@
 import { Phone, MessageCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import OpenAppModalTrigger from "@/components/OpenAppModalTrigger";
 
 export default function MobileActionFooter() {
     const [show, setShow] = useState(true);
@@ -33,14 +34,20 @@ export default function MobileActionFooter() {
             show ? "translate-y-0" : "translate-y-full"
         )}>
             <div className="flex gap-3">
-                <button className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3.5 text-base font-bold text-black shadow-lg shadow-orange-900/20 active:scale-[0.98]">
+                <OpenAppModalTrigger
+                    triggerType="contact"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3.5 text-base font-bold text-black shadow-lg shadow-orange-900/20 active:scale-[0.98]"
+                >
                     <Phone className="h-5 w-5" />
                     <span>ARA</span>
-                </button>
-                <button className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-base font-bold text-white active:scale-[0.98]">
+                </OpenAppModalTrigger>
+                <OpenAppModalTrigger
+                    triggerType="contact"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-base font-bold text-white active:scale-[0.98]"
+                >
                     <MessageCircle className="h-5 w-5" />
                     <span>MESAJ</span>
-                </button>
+                </OpenAppModalTrigger>
             </div>
         </div>
     );
