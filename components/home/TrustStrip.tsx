@@ -13,14 +13,14 @@ const TRUST_ITEMS = [
     },
     {
         icon: Users,
-        text: "5.000+ Kurumsal Üye",
+        text: "Sıfır Komisyon",
     },
 ];
 
 export default function TrustStrip() {
     return (
         <div className="w-full border-t border-white/10 bg-neutral-950/80 backdrop-blur-md py-4 md:py-6">
-            <div className="container mx-auto">
+            <div className="container mx-auto px-4">
                 <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
                     {TRUST_ITEMS.map((item, idx) => (
                         <div key={idx} className="flex items-center gap-4 group">

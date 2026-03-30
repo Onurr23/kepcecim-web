@@ -6,7 +6,7 @@ import GlobalSearchInput from "@/components/ui/GlobalSearchInput";
 
 export default function HeroSection() {
   return (
-    <section className="relative h-[100dvh] w-full overflow-hidden">
+    <section className="relative w-full overflow-hidden min-h-screen min-h-[100svh]">
       {/* Background Layer (Z-0) */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-neutral-950" />
@@ -16,6 +16,7 @@ export default function HeroSection() {
           loop
           muted
           playsInline
+          preload="metadata"
           poster="/images/lp-hero-mockup.png"
           className="absolute inset-0 h-full w-full object-cover"
         >
@@ -27,7 +28,7 @@ export default function HeroSection() {
       </div>
 
       {/* Content Layer (Z-10) */}
-      <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center sm:px-6 lg:px-8 pb-16">
+      <div className="relative z-10 flex min-h-screen min-h-[100svh] flex-col items-center justify-center px-4 text-center sm:px-6 lg:px-8 pb-16 pt-20 sm:pt-24">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}

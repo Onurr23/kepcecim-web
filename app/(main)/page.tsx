@@ -62,6 +62,21 @@ const websiteJsonLd = {
   },
 };
 
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Kepçecim",
+  url: baseUrl,
+  logo: `${baseUrl}/og-default.png`,
+  description:
+    "Türkiye'nin en büyük iş makinesi pazar yeri. Satılık ve kiralık iş makineleri, yedek parça ilanları.",
+  contactPoint: {
+    "@type": "ContactPoint",
+    contactType: "customer support",
+    availableLanguage: "Turkish",
+  },
+};
+
 
 
 async function CategoryStripWrapper() {
@@ -88,6 +103,7 @@ export default function Home() {
   return (
     <div className="bg-neutral-950">
       <JsonLd data={websiteJsonLd} />
+      <JsonLd data={organizationJsonLd} />
       <HeroSection />
       <TrustStrip />
 

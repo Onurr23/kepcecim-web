@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Instagram } from "lucide-react";
 import { AppStoreQR } from "@/components/AppStoreQR";
 import OpenAppModalTrigger from "@/components/OpenAppModalTrigger";
-import { APP_STORE_URL_IOS, APP_STORE_URL_ANDROID } from "@/constants/appStore";
+import { APP_OUT_UNIFIED_PATH } from "@/constants/appStore";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -85,25 +85,23 @@ export default function Footer() {
                   <p className="mt-1 text-xs text-gray-500">Uygulamayı indir, ticarete başla</p>
                 </div>
 
-                <AppStoreQR
-                  platform="both"
-                  size={90}
-                  showLabels={true}
-                  labelClassName="text-gray-400"
-                  variant="card"
-                  className="gap-6"
-                />
-
-                <div className="flex flex-col gap-2 pt-1 border-t border-white/10">
-                  <a href="/out/app-store" className="flex items-center justify-center gap-2.5 rounded-xl bg-white/10 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/15 active:scale-[0.98] border border-white/10">
-                    <svg className="h-5 w-5 flex-shrink-0 fill-current" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.5 1.3 0 2.5.87 3.29.87.78 0 2.26-1.07 3.93-.91 1.32.09 2.38.57 3.12 1.58-2.73 1.57-2.31 5.34.69 7.07zm-4.61-12.2c.71-1.02 1.23-2.49.92-3.8 1.27.08 2.53.86 3.09 2.14-1.29.98-2.88 1.94-4.01 1.66z" /></svg>
-                    App Store
-                  </a>
-                  <a href="/out/google-play" className="flex items-center justify-center gap-2.5 rounded-xl bg-white/10 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/15 active:scale-[0.98] border border-white/10">
-                    <svg className="h-5 w-5 flex-shrink-0 fill-current" viewBox="0 0 24 24"><path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.3,4.25L17.41,7.13L15.39,9.15L14.54,11.15L6.05,2.66L20.3,10.88C20.71,11.13 20.71,11.75 20.3,12L17.41,9.15M16.81,8.88L14.54,11.15L6.05,2.66L16.81,8.88Z" /></svg>
-                    Google Play
-                  </a>
+                <div className="hidden sm:flex justify-center">
+                  <AppStoreQR
+                    unified
+                    size={100}
+                    showLabels
+                    labelClassName="text-gray-400"
+                    variant="card"
+                  />
                 </div>
+
+                <a
+                  href={APP_OUT_UNIFIED_PATH}
+                  className="sm:hidden flex items-center justify-center gap-2 rounded-xl bg-orange-600 py-3.5 text-sm font-bold text-white transition-colors hover:bg-orange-500 active:scale-[0.98]"
+                >
+                  Uygulamayı İndir
+                </a>
+
               </div>
             </div>
           </div>

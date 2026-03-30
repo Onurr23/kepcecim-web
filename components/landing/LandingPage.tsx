@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { AppStoreQR } from "@/components/AppStoreQR";
 import OpenAppModalTrigger from "@/components/OpenAppModalTrigger";
-import { APP_STORE_URL_IOS, APP_STORE_URL_ANDROID } from "@/constants/appStore";
+import { APP_OUT_UNIFIED_PATH } from "@/constants/appStore";
 
 export default function LandingPage() {
     return (
@@ -42,35 +42,27 @@ export default function LandingPage() {
 
                             {/* CTA Buttons & Social Proof */}
                             <div className="mt-6 w-full">
-                                <p className="text-xs font-medium tracking-widest text-neutral-500 uppercase mb-4">
-                                    5.000+ Profesyonel Tarafından Kullanılıyor
-                                </p>
-                                <div className="flex flex-row items-center gap-4 w-full">
-                                    {/* App Store Button */}
-                                    <a href="/out/app-store" className="flex items-center gap-3 bg-neutral-900 border border-white/20 rounded-xl px-4 py-2 hover:bg-neutral-800 transition-all active:scale-95 h-14 min-w-[160px]">
-                                        <img
-                                            src="/apple.png"
-                                            alt="Apple"
-                                            className="h-8 w-8 object-contain"
-                                        />
-                                        <div className="flex flex-col items-start leading-none text-white">
-                                            <span className="text-[10px] font-medium text-neutral-400 uppercase">Download on the</span>
-                                            <span className="text-lg font-bold font-oswald tracking-wide">App Store</span>
-                                        </div>
+                                {/* Mobil: tek CTA → /out/app (platforma göre mağaza) */}
+                                <div className="flex w-full md:hidden">
+                                    <a
+                                        href={APP_OUT_UNIFIED_PATH}
+                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-orange-600/25 transition-all hover:bg-orange-500 active:scale-[0.98]"
+                                    >
+                                        Uygulamayı İndir
                                     </a>
-
-                                    {/* Google Play Button */}
-                                    <a href="/out/google-play" className="flex items-center gap-3 bg-neutral-900 border border-white/20 rounded-xl px-4 py-2 hover:bg-neutral-800 transition-all active:scale-95 h-14 min-w-[160px]">
-                                        <img
-                                            src="/play_store.png"
-                                            alt="Google Play"
-                                            className="h-7 w-7 object-contain"
+                                </div>
+                                {/* Masaüstü: birleşik QR */}
+                                <div className="hidden md:flex flex-col items-start gap-4">
+                                    <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-6">
+                                        <AppStoreQR
+                                            unified
+                                            size={140}
+                                            showLabels
+                                            labelClassName="text-neutral-400"
+                                            variant="card"
                                         />
-                                        <div className="flex flex-col items-start leading-none text-white">
-                                            <span className="text-[10px] font-medium text-neutral-400 uppercase">GET IT ON</span>
-                                            <span className="text-lg font-bold font-oswald tracking-wide">Google Play</span>
-                                        </div>
-                                    </a>
+                                    </div>
+                                   
                                 </div>
                             </div>
                         </motion.div>
@@ -111,7 +103,7 @@ export default function LandingPage() {
                     <div className="flex flex-wrap justify-center md:justify-around items-center gap-8 md:gap-12">
                         {[
                             { label: "İl", value: "81" },
-                            { label: "İlan", value: "10.000+" },
+                            { label: "Komisyon", value: "Sıfır" },
                             { label: "Ticaret", value: "Milyonlarca TL" }
                         ].map((stat, idx) => (
                             <div key={idx} className="flex flex-col items-center justify-center text-center">
@@ -290,7 +282,7 @@ export default function LandingPage() {
                             <span className="text-orange-500">TİCARETE BAŞLAYIN.</span>
                         </h2>
                         <p className="text-neutral-400 text-base md:text-lg">
-                            Telefonunuzla karekodu tarayın veya mağaza butonuna tıklayın
+                            Aşağıdaki karekodu telefonunuzla tarayın; mobilde tek dokunuşla mağazaya gidin
                         </p>
                     </div>
 
@@ -298,52 +290,25 @@ export default function LandingPage() {
 
                         {/* QR + Store buttons (Desktop) */}
                         <div className="hidden md:block w-full">
-                            <div className="inline-flex flex-col items-center gap-8 p-8 rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-transparent shadow-2xl shadow-black/30">
+                            <div className="inline-flex flex-col items-center gap-6 p-8 rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-transparent shadow-2xl shadow-black/30">
                                 <AppStoreQR
-                                    platform="both"
-                                    size={160}
-                                    showLabels={true}
-                                    labelClassName="text-neutral-600"
+                                    unified
+                                    size={180}
+                                    showLabels
+                                    labelClassName="text-neutral-500"
                                     variant="card"
-                                    className="gap-8"
                                 />
-                                    <div className="flex flex-row flex-wrap items-center justify-center gap-4 w-full">
-                                    <a href="/out/app-store" className="flex items-center gap-3 rounded-xl bg-neutral-900 border border-white/20 px-5 py-3 hover:bg-neutral-800 hover:border-orange-500/30 transition-all active:scale-[0.98]">
-                                        <img src="/apple.png" alt="Apple" className="h-7 w-7 object-contain" />
-                                        <div className="flex flex-col items-start leading-none text-white">
-                                            <span className="text-[10px] font-medium text-neutral-400 uppercase">Download on the</span>
-                                            <span className="text-sm font-bold font-oswald tracking-wide">App Store</span>
-                                        </div>
-                                    </a>
-                                    <a href="/out/google-play" className="flex items-center gap-3 rounded-xl bg-neutral-900 border border-white/20 px-5 py-3 hover:bg-neutral-800 hover:border-orange-500/30 transition-all active:scale-[0.98]">
-                                        <img src="/play_store.png" alt="Google Play" className="h-6 w-6 object-contain" />
-                                        <div className="flex flex-col items-start leading-none text-white">
-                                            <span className="text-[10px] font-medium text-neutral-400 uppercase">Get it on</span>
-                                            <span className="text-sm font-bold font-oswald tracking-wide">Google Play</span>
-                                        </div>
-                                    </a>
-                                </div>
+                            
                             </div>
                         </div>
 
-                        {/* Mobile: only store buttons */}
-                        <div className="flex md:hidden flex-col items-center gap-6">
-                                <div className="flex flex-row flex-wrap justify-center gap-4">
-                                <a href="/out/app-store" className="flex items-center gap-2.5 bg-neutral-900 border border-white/20 rounded-xl px-4 py-3 hover:bg-neutral-800 active:scale-95">
-                                    <img src="/apple.png" alt="Apple" className="h-6 w-6 object-contain" />
-                                    <div className="flex flex-col items-start leading-none text-white">
-                                        <span className="text-[8px] font-medium text-neutral-400 uppercase">Download on the</span>
-                                        <span className="text-sm font-bold font-oswald tracking-wide">App Store</span>
-                                    </div>
-                                </a>
-                                <a href="/out/google-play" className="flex items-center gap-2.5 bg-neutral-900 border border-white/20 rounded-xl px-4 py-3 hover:bg-neutral-800 active:scale-95">
-                                    <img src="/play_store.png" alt="Google Play" className="h-5 w-5 object-contain" />
-                                    <div className="flex flex-col items-start leading-none text-white">
-                                        <span className="text-[8px] font-medium text-neutral-400 uppercase">Get it on</span>
-                                        <span className="text-sm font-bold font-oswald tracking-wide">Google Play</span>
-                                    </div>
-                                </a>
-                            </div>
+                        <div className="flex md:hidden flex-col items-center gap-4">
+                            <a
+                                href={APP_OUT_UNIFIED_PATH}
+                                className="inline-flex items-center justify-center rounded-xl bg-orange-600 px-8 py-4 text-lg font-bold text-white shadow-lg shadow-orange-600/30 transition-all hover:bg-orange-500 active:scale-[0.98]"
+                            >
+                                Uygulamayı İndir
+                            </a>
                             <span className="text-neutral-500 text-sm">iOS ve Android</span>
                         </div>
                     </div>

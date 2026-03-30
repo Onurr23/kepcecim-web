@@ -1,6 +1,33 @@
+import type { Metadata } from "next";
+import { getCanonicalUrl } from "@/lib/seo";
+
 interface FiyatlariPageProps {
   params: {
     category: string;
+  };
+}
+
+export async function generateMetadata({ params }: FiyatlariPageProps): Promise<Metadata> {
+  const category = params.category;
+  const categoryLabel = category
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  return {
+    title: `${categoryLabel} Fiyatları - Satılık ${categoryLabel} İlanları`,
+    description: `Türkiye'deki ${categoryLabel} fiyatları, satılık ve kiralık ${categoryLabel} ilanları. Güncel piyasa değerleri Kepçecim'de.`,
+    alternates: { canonical: getCanonicalUrl(`/fiyatlari/${category}`) },
+    openGraph: {
+      title: `${categoryLabel} Fiyatları | Kepçecim`,
+      description: `Türkiye'deki ${categoryLabel} fiyatları ve ilanları.`,
+      url: getCanonicalUrl(`/fiyatlari/${category}`),
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${categoryLabel} Fiyatları | Kepçecim`,
+      description: `${categoryLabel} fiyatları ve ilanları Kepçecim'de.`,
+    },
   };
 }
 

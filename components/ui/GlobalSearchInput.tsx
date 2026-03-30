@@ -41,9 +41,9 @@ export default function GlobalSearchInput({
 
             <div className="relative flex items-center">
                 {/* Glass Container */}
-                <div className="relative w-full flex items-center bg-neutral-900/60 backdrop-blur-xl border border-white/20 rounded-full shadow-2xl shadow-black/50 transition-all duration-300 group-hover:bg-neutral-900/70 h-16">
+                <div className="relative w-full flex items-center bg-neutral-900/60 backdrop-blur-xl border border-white/20 rounded-full shadow-2xl shadow-black/50 transition-all duration-300 group-hover:bg-neutral-900/70 h-14 sm:h-16">
 
-                    <div className="flex-1 flex items-center px-4 h-full pl-6">
+                    <div className="flex-1 flex items-center px-3 sm:px-4 h-full pl-4 sm:pl-6 min-w-0">
                         <Search className="h-5 w-5 text-white/50 mr-3 shrink-0" />
                         <input
                             type="text"
@@ -51,7 +51,7 @@ export default function GlobalSearchInput({
                             onChange={(e) => setQuery(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder="Marka, model veya ilan no ara..."
-                            className="w-full h-full bg-transparent text-white placeholder:text-gray-400 text-lg outline-none selection:bg-primary/30 min-w-0"
+                            className="w-full h-full bg-transparent text-white placeholder:text-gray-400 text-base sm:text-lg outline-none selection:bg-primary/30 min-w-0"
                         />
                     </div>
 
@@ -61,7 +61,7 @@ export default function GlobalSearchInput({
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={handleSearch}
-                            className="flex items-center justify-center h-12 px-8 rounded-full bg-orange-600 text-white font-semibold text-base hover:bg-orange-700 transition-colors shadow-lg"
+                            className="flex items-center justify-center h-11 sm:h-12 px-5 sm:px-8 rounded-full bg-orange-600 text-white font-semibold text-sm sm:text-base hover:bg-orange-700 transition-colors shadow-lg whitespace-nowrap"
                         >
                             ARA
                         </motion.button>

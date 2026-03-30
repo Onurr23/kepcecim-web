@@ -183,7 +183,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
       openGraph: {
         title,
         description: description || "İş makinesi ilan detayı. Kepçecim.",
-        images: imageUrl ? [{ url: imageUrl, width: 800, height: 600 }] : [],
+        images: imageUrl ? [{ url: imageUrl, width: 1200, height: 630 }] : [],
         type: "website",
       },
       twitter: {
@@ -352,41 +352,23 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
       },
     };
 
-    // Aynı description (generateMetadata ile birebir); body'de <meta> ile de veriyoruz
-    // böylece Lighthouse ve crawler'lar ilk HTML'de görür (Next.js bazen head'i stream ediyor).
-    const yearDesc = machine.year || machine.production_year || "";
-    const hoursDesc = machine.hours_meter ? `${machine.hours_meter} Saatte` : "";
-    let priceStrDesc = "";
-    try {
-      const pricing =
-        machine.pricing &&
-        (typeof machine.pricing === "string"
-          ? JSON.parse(machine.pricing)
-          : machine.pricing);
-      if (pricing) {
-        const amount =
-          type === "rental"
-            ? pricing.dailyRate ?? pricing.monthlyRate
-            : pricing.price ?? pricing.salePrice;
-        if (amount)
-          priceStrDesc = `Fiyat: ${Number(amount).toLocaleString("tr-TR")} ${pricing.currency || "₺"}`;
-      }
-    } catch {
-      /* ignore */
-    }
-    const shortDesc = machine.description
-      ? machine.description.substring(0, 150) + "..."
-      : "";
-    const descriptionRaw = `${yearDesc ? `${yearDesc} Model, ` : ""}${hoursDesc ? `${hoursDesc}. ` : ""}${priceStrDesc ? `${priceStrDesc}. ` : ""}${shortDesc}`.trim();
-    const metaDescription =
-      (descriptionRaw ||
-        `${brandName} ${modelName} ${categoryName} - ${cityName}. Kepçecim'de inceleyin.`).substring(0, 160) ||
-      "İş makinesi ilan detayı. Kepçecim.";
+    const typeLabel = type === "rental" ? "Kiralık" : type === "part" ? "Yedek Parça" : "Satılık";
+    const listingSlug = type === "rental" ? "kiralik" : type === "part" ? "yedek-parca" : "satilik";
+    const siteBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://kepcecim.com";
+    const breadcrumbJsonLd = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Ana Sayfa", item: siteBaseUrl },
+        { "@type": "ListItem", position: 2, name: `${typeLabel} İş Makineleri`, item: `${siteBaseUrl}/ilanlar/${listingSlug}` },
+        { "@type": "ListItem", position: 3, name: productName, item: productUrl },
+      ],
+    };
 
     return (
       <>
-        <meta name="description" content={metaDescription} />
         <JsonLd data={productJsonLd} />
+        <JsonLd data={breadcrumbJsonLd} />
         <ListingDetailClient listing={enrichedMachine} type={type} />
       </>
     );

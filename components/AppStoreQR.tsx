@@ -4,6 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 import {
   APP_STORE_URL_IOS,
   APP_STORE_URL_ANDROID,
+  getAppOutAbsoluteUrl,
 } from "@/constants/appStore";
 
 type Platform = "ios" | "android" | "both";
@@ -18,6 +19,11 @@ interface AppStoreQRProps {
   labelClassName?: string;
   /** default: beyaz kutu; card: gölgeli kart; minimal: sadece QR, ince çerçeve */
   variant?: Variant;
+  /**
+   * Tek QR: /out/app mutlak URL — okutunca telefonda platform algılanır, doğru mağazaya gider.
+   * true iken `platform` yok sayılır.
+   */
+  unified?: boolean;
 }
 
 const qrBoxClass = {
@@ -33,8 +39,27 @@ export function AppStoreQR({
   showLabels = true,
   labelClassName = "text-white/80",
   variant = "default",
+  unified = false,
 }: AppStoreQRProps) {
   const boxClass = qrBoxClass[variant];
+
+  if (unified) {
+    const url = getAppOutAbsoluteUrl();
+    return (
+      <div className={`inline-flex flex-col items-center gap-3 ${className}`}>
+        <div className={boxClass}>
+          <QRCodeSVG value={url} size={size} level="M" />
+        </div>
+        {showLabels && (
+          <span
+            className={`text-sm font-semibold tracking-wide text-center max-w-[200px] ${labelClassName}`}
+          >
+            Telefonunuzdan tarayın
+          </span>
+        )}
+      </div>
+    );
+  }
 
   if (platform === "both") {
     return (

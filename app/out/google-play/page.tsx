@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { APP_STORE_URL_ANDROID } from "@/constants/appStore";
 
 export default function GooglePlayRedirectPage() {
   useEffect(() => {
-    window.location.href =
-      "https://play.google.com/store/apps/details?id=com.kepcecim.app";
+    window.location.href = APP_STORE_URL_ANDROID;
   }, []);
 
   return (

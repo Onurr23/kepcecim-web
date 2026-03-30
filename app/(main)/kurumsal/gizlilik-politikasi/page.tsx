@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import PrivacyText from "@/components/content/PrivacyText";
+import { getCanonicalUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Gizlilik Politikası",
   description:
     "Kepçecim gizlilik politikası. Kişisel verilerinizin nasıl toplandığı, kullanıldığı ve korunduğu hakkında bilgi.",
+  alternates: { canonical: getCanonicalUrl("/kurumsal/gizlilik-politikasi") },
   openGraph: {
     title: "Gizlilik Politikası | Kepçecim",
     description: "Kepçecim gizlilik politikası ve kişisel veri koruma.",
-    url: "/kurumsal/gizlilik-politikasi",
+    url: getCanonicalUrl("/kurumsal/gizlilik-politikasi"),
     type: "website",
   },
   twitter: {

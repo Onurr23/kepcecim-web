@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Link2 } from "lucide-react";
 import { AppStoreQR } from "@/components/AppStoreQR";
-import { APP_STORE_URL_IOS, APP_STORE_URL_ANDROID } from "@/constants/appStore";
+import { APP_OUT_UNIFIED_PATH } from "@/constants/appStore";
 
 export default function MobileAppSection() {
     return (
@@ -39,21 +39,33 @@ export default function MobileAppSection() {
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-8 border-t border-white/10 pt-10">
-                            {/* QR Codes (iOS + Android) */}
-                            <div className="flex items-center gap-4 bg-white/5 p-3 rounded-xl border border-white/10 backdrop-blur-sm">
-                                <AppStoreQR platform="both" size={80} showLabels={false} className="shrink-0" />
+                            <div className="hidden md:flex items-center gap-4 bg-white/5 p-3 rounded-xl border border-white/10 backdrop-blur-sm">
+                                <AppStoreQR
+                                    unified
+                                    size={88}
+                                    showLabels={false}
+                                    className="shrink-0"
+                                />
                                 <div className="flex flex-col">
-                                    <span className="text-xs text-orange-500 font-bold tracking-wider uppercase mb-1">Telefondan Tara</span>
-                                    <span className="text-sm text-gray-400 leading-snug max-w-[140px]">
-                                        App Store veya Google Play için kameranızı kullanın
+                                    <span className="text-xs text-orange-500 font-bold tracking-wider uppercase mb-1">
+                                        Telefondan tara
+                                    </span>
+                                    <span className="text-sm text-gray-400 leading-snug max-w-[180px]">
+                                        Karekod cihazınıza uygun mağazaya yönlendirir
                                     </span>
                                 </div>
                             </div>
 
-                            {/* Buttons */}
-                            <div className="flex flex-col gap-3">
-                                <StoreButton platform="ios" />
-                                <StoreButton platform="android" />
+                            <div className="flex w-full flex-col gap-3 sm:w-auto md:hidden">
+                                <a
+                                    href={APP_OUT_UNIFIED_PATH}
+                                    className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl bg-orange-600 px-8 py-3.5 text-base font-bold text-white shadow-lg shadow-orange-600/25 transition-colors hover:bg-orange-500 active:scale-[0.98]"
+                                >
+                                    Uygulamayı İndir
+                                </a>
+                                <p className="text-xs text-gray-500">
+                                    Tek dokunuşla iOS veya Android mağazasına gidersiniz.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -136,27 +148,4 @@ export default function MobileAppSection() {
             </div>
         </section>
     );
-}
-
-function StoreButton({ platform }: { platform: 'ios' | 'android' }) {
-    const isIOS = platform === 'ios';
-    const href = isIOS ? "/out/app-store" : "/out/google-play";
-    return (
-        <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex w-44 items-center gap-3 rounded-xl border border-white/10 bg-white/5 py-2 px-3 transition-colors hover:bg-white/10 hover:border-white/20"
-        >
-            {isIOS ? (
-                <svg className="h-6 w-6 fill-current text-white shrink-0" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.5 1.3 0 2.5.87 3.29.87.78 0 2.26-1.07 3.93-.91 1.32.09 2.38.57 3.12 1.58-2.73 1.57-2.31 5.34.69 7.07zm-4.61-12.2c.71-1.02 1.23-2.49.92-3.8 1.27.08 2.53.86 3.09 2.14-1.29.98-2.88 1.94-4.01 1.66z" /></svg>
-            ) : (
-                <svg className="h-6 w-6 fill-current text-white shrink-0" viewBox="0 0 24 24"><path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.3,4.25L17.41,7.13L15.39,9.15L14.54,11.15L6.05,2.66L20.3,10.88C20.71,11.13 20.71,11.75 20.3,12L17.41,9.15M16.81,8.88L14.54,11.15L6.05,2.66L16.81,8.88Z" /></svg>
-            )}
-            <div className="flex flex-col text-left leading-none">
-                <span className="text-[10px] uppercase text-neutral-400 font-medium">{isIOS ? 'Download on the' : 'Get it on'}</span>
-                <span className="text-sm font-bold text-white">{isIOS ? 'App Store' : 'Google Play'}</span>
-            </div>
-        </a>
-    )
 }

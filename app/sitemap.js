@@ -37,6 +37,36 @@ export default async function sitemap() {
             changeFrequency: 'weekly',
             priority: 0.7,
         },
+        {
+            url: `${baseUrl}/kurumsal/hakkimizda`,
+            lastModified: new Date(),
+            changeFrequency: 'monthly',
+            priority: 0.5,
+        },
+        {
+            url: `${baseUrl}/kurumsal/iletisim`,
+            lastModified: new Date(),
+            changeFrequency: 'monthly',
+            priority: 0.5,
+        },
+        {
+            url: `${baseUrl}/kurumsal/sss`,
+            lastModified: new Date(),
+            changeFrequency: 'monthly',
+            priority: 0.5,
+        },
+        {
+            url: `${baseUrl}/kurumsal/gizlilik-politikasi`,
+            lastModified: new Date(),
+            changeFrequency: 'monthly',
+            priority: 0.3,
+        },
+        {
+            url: `${baseUrl}/kurumsal/kullanim-kosullari`,
+            lastModified: new Date(),
+            changeFrequency: 'monthly',
+            priority: 0.3,
+        },
     ];
 
     // 2. Fetch Data (Parallel)

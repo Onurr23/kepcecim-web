@@ -83,6 +83,11 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
             description,
             url: canonical,
         },
+        twitter: {
+            card: "summary_large_image",
+            title,
+            description,
+        },
     };
 }
 

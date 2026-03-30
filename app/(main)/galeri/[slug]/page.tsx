@@ -99,7 +99,7 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
-      images: logoUrl ? [logoUrl] : [],
+      images: logoUrl ? [{ url: logoUrl, width: 1200, height: 630 }] : [],
       type: "website",
       url: canonical,
     },
@@ -131,21 +131,33 @@ export default async function StoreProfilePage({ params }: PageProps) {
       : store.address && typeof store.address === "object"
         ? (store.address as { fullAddress?: string }).fullAddress
         : undefined;
+  const location = [store.city, store.district].filter(Boolean).join(", ");
   const organizationJsonLd = {
     "@context": "https://schema.org",
-    "@type": "Organization",
+    "@type": "LocalBusiness",
     name: store.name,
     url: storeUrl,
     description: store.description || `${store.name} - İş makinesi galerisi`,
     image: getStorageUrl(store.logoUrl) || undefined,
     address: addressStr
-      ? { "@type": "PostalAddress", streetAddress: addressStr }
+      ? { "@type": "PostalAddress", streetAddress: addressStr, addressCountry: "TR", ...(location ? { addressLocality: location } : {}) }
       : undefined,
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Ana Sayfa", item: getBaseUrl() },
+      { "@type": "ListItem", position: 2, name: "Galericiler", item: `${getBaseUrl()}/galeriler` },
+      { "@type": "ListItem", position: 3, name: store.name, item: storeUrl },
+    ],
   };
 
   return (
     <>
       <JsonLd data={organizationJsonLd} />
+      <JsonLd data={breadcrumbJsonLd} />
       <StoreProfileClient
         initialSeller={initialSeller}
         initialProducts={products}

@@ -8,7 +8,7 @@ import { X, ShieldCheck, MessageSquare, LucideIcon } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { AppStoreQR } from "@/components/AppStoreQR";
-import { APP_STORE_URL_IOS, APP_STORE_URL_ANDROID } from "@/constants/appStore";
+import { APP_OUT_UNIFIED_PATH } from "@/constants/appStore";
 
 // --- Types ---
 export type TriggerType = 'contact' | 'header' | 'general';
@@ -124,7 +124,7 @@ export default function AppRedirectOverlay({ isOpen, onClose, triggerType }: App
                             <div className="flex flex-row p-8 gap-8">
                                 {/* Left: QR Codes - dark panel, theme consistent */}
                                 <div className="flex w-64 shrink-0 flex-col items-center justify-center rounded-xl bg-white/[0.04] border border-white/10 p-6">
-                                    <AppStoreQR platform="both" size={100} showLabels={true} className="gap-5" labelClassName="text-gray-400" variant="card" />
+                                    <AppStoreQR unified size={100} showLabels={false} variant="card" />
                                     <p className="mt-4 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
                                         Telefondan tara
                                     </p>
@@ -149,11 +149,6 @@ export default function AppRedirectOverlay({ isOpen, onClose, triggerType }: App
                                     <p className="mb-6 text-sm text-neutral-400 leading-relaxed">
                                         {content.body}
                                     </p>
-
-                                    <div className="flex gap-3">
-                                        <DesktopStoreButton platform="ios" />
-                                        <DesktopStoreButton platform="android" />
-                                    </div>
                                 </div>
                             </div>
                         </motion.div>
@@ -206,10 +201,12 @@ export default function AppRedirectOverlay({ isOpen, onClose, triggerType }: App
                                     {content.body}
                                 </p>
 
-                                <div className="grid w-full grid-cols-1 gap-3">
-                                    <MobileStoreButton platform="ios" />
-                                    <MobileStoreButton platform="android" />
-                                </div>
+                                <a
+                                    href={APP_OUT_UNIFIED_PATH}
+                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 py-4 font-bold text-white transition-transform active:scale-95 shadow-lg shadow-orange-600/20"
+                                >
+                                    Uygulamayı İndir
+                                </a>
                             </div>
                         </motion.div>
                     </div>
@@ -220,47 +217,3 @@ export default function AppRedirectOverlay({ isOpen, onClose, triggerType }: App
     );
 }
 
-// --- Helper Components ---
-
-function DesktopStoreButton({ platform }: { platform: 'ios' | 'android' }) {
-    const isIOS = platform === 'ios';
-    const href = isIOS ? APP_STORE_URL_IOS : APP_STORE_URL_ANDROID;
-    return (
-        <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-1 items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 py-3 transition-colors hover:bg-white/10 hover:border-white/20 text-white"
-        >
-            {isIOS ? (
-                <svg className="h-6 w-6 fill-current text-white" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.5 1.3 0 2.5.87 3.29.87.78 0 2.26-1.07 3.93-.91 1.32.09 2.38.57 3.12 1.58-2.73 1.57-2.31 5.34.69 7.07zm-4.61-12.2c.71-1.02 1.23-2.49.92-3.8 1.27.08 2.53.86 3.09 2.14-1.29.98-2.88 1.94-4.01 1.66z" /></svg>
-            ) : (
-                <svg className="h-6 w-6 fill-current text-white" viewBox="0 0 24 24"><path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.3,4.25L17.41,7.13L15.39,9.15L14.54,11.15L6.05,2.66L20.3,10.88C20.71,11.13 20.71,11.75 20.3,12L17.41,9.15M16.81,8.88L14.54,11.15L6.05,2.66L16.81,8.88Z" /></svg>
-            )}
-            <div className="flex flex-col text-left leading-none">
-                <span className="text-[10px] uppercase text-neutral-400 font-medium">{isIOS ? 'Download on the' : 'Get it on'}</span>
-                <span className="text-sm font-bold text-white">{isIOS ? 'App Store' : 'Google Play'}</span>
-            </div>
-        </a>
-    )
-}
-
-function MobileStoreButton({ platform }: { platform: 'ios' | 'android' }) {
-    const isIOS = platform === 'ios';
-    const href = isIOS ? APP_STORE_URL_IOS : APP_STORE_URL_ANDROID;
-    return (
-        <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-3 rounded-xl bg-orange-600 py-4 font-bold text-white transition-transform active:scale-95 shadow-lg shadow-orange-600/20"
-        >
-            {isIOS ? (
-                <svg className="h-6 w-6 fill-current" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.5 1.3 0 2.5.87 3.29.87.78 0 2.26-1.07 3.93-.91 1.32.09 2.38.57 3.12 1.58-2.73 1.57-2.31 5.34.69 7.07zm-4.61-12.2c.71-1.02 1.23-2.49.92-3.8 1.27.08 2.53.86 3.09 2.14-1.29.98-2.88 1.94-4.01 1.66z" /></svg>
-            ) : (
-                <svg className="h-6 w-6 fill-current" viewBox="0 0 24 24"><path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.3,4.25L17.41,7.13L15.39,9.15L14.54,11.15L6.05,2.66L20.3,10.88C20.71,11.13 20.71,11.75 20.3,12L17.41,9.15M16.81,8.88L14.54,11.15L6.05,2.66L16.81,8.88Z" /></svg>
-            )}
-            <span>{isIOS ? 'App Store’dan İndir' : 'Google Play’den İndir'}</span>
-        </a>
-    )
-}
