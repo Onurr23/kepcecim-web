@@ -22,62 +22,7 @@ const getStorageUrl = (path: string | null | undefined) => {
 };
 
 
-import { staticClient } from '@/utils/supabase/static-client';
-
-export const revalidate = 60; // 1 dakika ISR
-
-export async function generateStaticParams() {
-  const supabase = staticClient;
-
-  // Son 20 satılık ilanı alıp static olarak üretelim
-  const { data: sales } = await supabase
-    .from('sales_machines')
-    .select('id, title, brand:brand(name), model:model(name)')
-    .limit(20)
-    .order('created_at', { ascending: false });
-
-  if (!sales) return [];
-
-  // Helper for slugify (Local duplicate since import might be problematic if util uses something else, 
-  // but better to import if standard. Assuming slugify util is safe. 
-  // Note: User provided file content didn't show slugify import in this file but it is used in sitemap.js.
-  // I will use a simple inline slugify or try to import if I knew where it is. 
-  // sitemap.js imports from '@/utils/slugify'. Let's try that or just use the logic here.
-  // However, I can't import a function if I haven't seen the file. 
-  // Safe bet: replicate simple legacy slug logic or use the ID which is the critical part.
-  // Wait, the slug format is Brand-Model-Title-ID. 
-  // Ideally I should import slugify.
-
-  // Let's assume standard import isn't available and write a cleaner slugify here or just rely on ID matching 
-  // if the page allows lazy matching. The page extracts ID from the end. 
-  // But generateStaticParams needs the EXACT slug to match valid routes.
-  // I'll grab slugify from utils if possible. 
-  // Let's assume I can import it.
-
-  return sales.map((item: { id: string; title?: string; brand?: { name?: string } | { name?: string }[]; model?: { name?: string } | { name?: string }[] }) => {
-    const brandObj = Array.isArray(item.brand) ? item.brand[0] : item.brand;
-    const modelObj = Array.isArray(item.model) ? item.model[0] : item.model;
-    const brand = brandObj?.name || '';
-    const model = modelObj?.name || '';
-    const title = item.title || '';
-
-    // Simple slugify implementation to avoid import dependency risk if file not read
-    const sl = (str: string) => str
-      .toLowerCase()
-      .replace(/ğ/g, 'g')
-      .replace(/ü/g, 'u')
-      .replace(/ş/g, 's')
-      .replace(/ı/g, 'i')
-      .replace(/ö/g, 'o')
-      .replace(/ç/g, 'c')
-      .replace(/[^a-z0-9-]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
-
-    const slug = `${sl(brand)}-${sl(model)}-${sl(title)}-${item.id}`;
-    return { slug };
-  });
-}
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
 
