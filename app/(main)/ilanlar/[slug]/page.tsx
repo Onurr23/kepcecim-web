@@ -424,7 +424,9 @@ export default async function DynamicListingsPage({ params, searchParams }: Prop
         let priceDisplay = 'Fiyat Sorunuz';
         if (tab === 'sale' && pricing?.price) priceDisplay = `${Number(pricing.price).toLocaleString('tr-TR')} ₺`;
         else if (tab === 'rent') {
-            if (pricing?.dailyRate) priceDisplay = `${Number(pricing.dailyRate).toLocaleString('tr-TR')} ₺/Gün`;
+            if (pricing?.hourlyRate) priceDisplay = `${Number(pricing.hourlyRate).toLocaleString('tr-TR')} ₺/Saat`;
+            else if (pricing?.dailyRate) priceDisplay = `${Number(pricing.dailyRate).toLocaleString('tr-TR')} ₺/Gün`;
+            else if (pricing?.weeklyRate) priceDisplay = `${Number(pricing.weeklyRate).toLocaleString('tr-TR')} ₺/Hafta`;
             else if (pricing?.monthlyRate) priceDisplay = `${Number(pricing.monthlyRate).toLocaleString('tr-TR')} ₺/Ay`;
         }
         else if (tab === 'part' && pricing?.price) priceDisplay = `${Number(pricing.price).toLocaleString('tr-TR')} ₺`;

@@ -2,7 +2,6 @@ import { getSalesMachineById } from "@/services/sales";
 import { getRentalMachineById } from "@/services/rental";
 import { getPartById } from "@/services/parts";
 import { getFeaturesByIds, getAttachmentsByIds } from "@/services/categories";
-import { incrementViewCount } from "@/services/view-count";
 import ListingDetailClient from "@/components/listing/ListingDetailClient";
 import JsonLd from "@/components/seo/JsonLd";
 import { getCanonicalUrl } from "@/lib/seo";
@@ -217,8 +216,6 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
     // 2. Fetch Auxiliary Data (Features, Attachments) & Increment View Count
     // We do this in parallel to main thread if possible, but here we await to pass data to client.
     // View count can be non-blocking.
-    incrementViewCount(table, id).catch(err => console.error("View count error", err));
-
     const featureIds = machine.features || [];
     const attachmentIds = machine.attachments || [];
 
